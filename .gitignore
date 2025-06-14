@@ -11,14 +11,14 @@
 **/*.code-workspace
 
 # 日志和输出
-*.log
+./*.log
 *.out
 *.bak
 *.swp
 
 # 结果和中间文件（最外层）
-*.wav
-*.yuv
+./*.wav
+./*.yuv
 
 # 结果文件夹
 results_*/
