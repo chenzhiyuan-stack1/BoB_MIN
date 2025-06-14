@@ -23,6 +23,7 @@ runTestsOnModel() {
       echo $MODEL >active_model
 
       docker run -d --rm -v `pwd`:/app -w /app --name alphartc_pyinfer --cap-add=NET_ADMIN challenge-env peerconnection_serverless receiver_pyinfer.json
+      # docker run -d --rm -v `pwd`:/app -w /app --name alphartc_pyinfer --cap-add=NET_ADMIN opennetlab.azurecr.io/challenge-env peerconnection_serverless receiver_pyinfer.json
       sleep 1
       docker exec -d -w /app/tc_profiles alphartc_pyinfer bash ./tc_policy.sh $PROFILE
       docker exec alphartc_pyinfer peerconnection_serverless sender_pyinfer.json

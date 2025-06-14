@@ -1,0 +1,28 @@
+# Python 缓存
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+**/*.pyd
+**/*.so
+**/*.pyc
+
+# VS Code
+**/.vscode/
+**/*.code-workspace
+
+# 日志和输出
+*.log
+*.out
+*.bak
+*.swp
+
+# 结果和中间文件（最外层）
+*.wav
+*.yuv
+
+# 结果文件夹
+results_*/
+result*/
+
+# 其他
+*.DS_Store

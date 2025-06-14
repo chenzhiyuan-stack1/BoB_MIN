@@ -1,6 +1,6 @@
 {
     "serverless_connection": {
-        "autoclose": 60,
+        "autoclose": 20,
         "sender": {
             "enabled": true,
             "dest_ip": "0.0.0.0",
@@ -20,9 +20,9 @@
         },
         "video_file": {
             "enabled": true,
-            "height": 360,
-            "width": 640,
-            "fps": 24,
+            "height": 240,
+            "width": 320,
+            "fps": 10,
             "file_path": "testmedia/test.yuv"
         }
     },
