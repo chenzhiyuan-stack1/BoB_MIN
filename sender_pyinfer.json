@@ -3,7 +3,7 @@
         "autoclose": 20,
         "sender": {
             "enabled": true,
-            "dest_ip": "0.0.0.0",
+            "dest_ip": "202.120.36.33",
             "dest_port": 8000
         },
         "receiver": {

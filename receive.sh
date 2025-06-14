@@ -38,7 +38,7 @@ runTestsOnModel() {
     return
   fi
   # 远程登录并启动发送端
-  ssh -p 2223 knw@202.120.36.216 "cd /home/knw/BoB && bash /home/knw/BoB/send.sh ${modelName} ${resultsDir}"
+  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send.sh ${modelName} ${resultsDir}"
   # 等待连接建立，最多等待30秒
   for i in {1..30}; do
     if check_connection; then
