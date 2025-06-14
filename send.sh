@@ -27,11 +27,5 @@ mkdir -p $resultsDir
 cp BandwidthEstimator_${modelName}.py BandwidthEstimator.py
 # 运行测试
 runTestsOnModel "${modelName}" ${resultsDir}
-# 移动sar日志文件
-if [ -f "${DATA_LOGFILE}" ]; then
-    mv -f ${DATA_LOGFILE} ${modelResultDir}/
-else
-    echo "警告：接收端未生成 data.log"
-fi
 
 
