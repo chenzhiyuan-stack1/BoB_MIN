@@ -1,7 +1,8 @@
 #!/bin/bash
 date=$(date '+%d_%m_%Y_%H%M')
+testid=0
 MODELDIR="./model"
-RESULTDIR="results_${date}"
+RESULTDIR="./results/${testid}/${date}"
 DATA_LOGFILE="data.log"
 rm -rf ${DATA_LOGFILE}
 
@@ -38,7 +39,8 @@ runTestsOnModel() {
     return
   fi
   # 远程登录并启动发送端
-  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send.sh ${modelName} ${resultsDir}"
+  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send.sh ${modelName}"
+  # ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && docker run -d --rm --network host -v \$(pwd):/app -w /app --name alphartc_sender --cap-add=NET_ADMIN challenge-env peerconnection_serverless sender_pyinfer.json"
   # 等待连接建立，最多等待30秒
   for i in {1..30}; do
     if check_connection; then
