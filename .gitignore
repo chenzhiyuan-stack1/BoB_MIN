@@ -11,6 +11,7 @@
 **/*.code-workspace
 
 # 日志和输出
+/*.jsonl
 /*.log
 *.out
 *.bak

@@ -27,6 +27,9 @@
         }
     },
     "audio_source": {
+        "audio_disabled": {
+            "enabled": false
+        },
         "microphone": {
             "enabled": false
         },

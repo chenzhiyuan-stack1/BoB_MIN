@@ -125,3 +125,17 @@ def probe_prob(packets_list):
         return 0
     probe_cnt = sum(1 for pkt in packets_list if pkt.payload_type in PROBE_TYPES)
     return probe_cnt / len(packets_list)
+
+# 16. Received video bytes
+def received_video_bytes(packets_list):
+    return sum(pkt.payload_size for pkt in packets_list if pkt.payload_type in VIDEO_TYPES)
+
+# 17. Received audio bytes
+def received_audio_bytes(packets_list):
+    return sum(pkt.payload_size for pkt in packets_list if pkt.payload_type in AUDIO_TYPES)
+
+# 18. Payload type
+def payload_type(packets_list):
+    if not packets_list:
+        return None
+    return [pkt.payload_type for pkt in packets_list if pkt.payload_type is not None]

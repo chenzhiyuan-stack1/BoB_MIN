@@ -179,6 +179,9 @@ class Estimator(object):
             "video_prob": calculate_state.video_prob(packets_list),
             "audio_prob": calculate_state.audio_prob(packets_list),
             "probe_prob": calculate_state.probe_prob(packets_list),
+            "received_video_bytes": calculate_state.received_video_bytes(packets_list),
+            "received_audio_bytes": calculate_state.received_audio_bytes(packets_list),
+            "payload_type": calculate_state.payload_type(packets_list),
         }
 
         # 2. 动作
