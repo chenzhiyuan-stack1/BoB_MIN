@@ -157,10 +157,10 @@ class Estimator(object):
         video_path,
         video_width,
         video_height,
-        data_log_path="data.log"
+        data_log_path="data.jsonl"  # 每个MI的记录存储路径，默认是data.jsonl
     ):
         """
-        记录每个MI的网络状态、动作（带宽）、音视频信息到data.log，格式化为一行一个json，便于后续处理。
+        记录每个MI的网络状态、动作（带宽）、音视频信息到data.jsonl，格式化为一行一个json，便于后续处理。
         """
         # 1. 计算网络状态特征
         state = {
@@ -205,7 +205,7 @@ class Estimator(object):
             # "video_info": video_info
         }
 
-        # 5. 写入data.log（每行一个json，便于后续处理）
+        # 5. 写入data.jsonl（每行一个json，便于后续处理）
         with open(data_log_path, "a") as f:
             f.write(json.dumps(mi_record, ensure_ascii=False) + "\n")
 
@@ -294,7 +294,7 @@ class Estimator(object):
             video_path="outvideo.yuv",
             video_width=320,
             video_height=240,
-            data_log_path="data.log"
+            data_log_path="data.jsonl"
         )
         
         self.mi_idx += 1  # MI编号自增

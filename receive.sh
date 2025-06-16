@@ -3,7 +3,7 @@ date=$(date '+%d_%m_%Y_%H%M')
 testid=0
 MODELDIR="./model"
 RESULTDIR="./results/${testid}/${date}"
-DATA_LOGFILE="data.log"
+DATA_LOGFILE="data.jsonl"
 rm -rf ${DATA_LOGFILE}
 
 check_connection() {
@@ -106,7 +106,7 @@ do
     if [ -f "${DATA_LOGFILE}" ]; then
       mv -f ${DATA_LOGFILE} ${modelResultDir}/
     else
-      echo "警告：接收端未生成 data.log"
+      echo "警告：接收端未生成 data.jsonl"
     fi
   done
 done
