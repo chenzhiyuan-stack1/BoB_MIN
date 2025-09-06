@@ -640,7 +640,7 @@ class Estimator(object):
         # 记录data
         self.record_mi_state(
             packets_list=self.receive_packets_list,
-            bandwidth_estimation=self.bandwidth_prediction,
+            bandwidth_estimation=self.last_bandwidth_estimation,
             mi_idx=self.mi_idx,
             min_seen_delay_global=self.global_min_delay,
             audio_path="outaudio.wav",
