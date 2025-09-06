@@ -86,7 +86,7 @@ test_model_list=(
   # gemini
   # hrcc
   # bob_heuristic
-  bob1
+  # bob1
   heuristic2
 )
 

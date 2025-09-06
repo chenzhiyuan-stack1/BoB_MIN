@@ -500,6 +500,8 @@ class Estimator(object):
         self.last_update_threshold_ms = -1
         self.now_ms = -1
         
+        self.mi_idx = 0  # 当前MI编号
+        self.global_min_delay = None  # 全局最小延迟
         self.receive_packets_list = []
 
     # reset estimator according to rtc_env_gcc
