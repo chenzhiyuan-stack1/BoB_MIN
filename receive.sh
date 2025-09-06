@@ -1,6 +1,6 @@
 #!/bin/bash
 date=$(date '+%d_%m_%Y_%H%M')
-testid=0
+testid=4
 MODELDIR="./model"
 RESULTDIR="./results/${testid}/${date}"
 DATA_LOGFILE="data.jsonl"
@@ -87,6 +87,7 @@ test_model_list=(
   # hrcc
   # bob_heuristic
   bob1
+  heuristic2
 )
 
 for i in {1..5}
