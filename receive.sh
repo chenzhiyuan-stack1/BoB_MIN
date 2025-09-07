@@ -11,7 +11,7 @@ check_connection() {
 }
 
 wait_for_port_listen() {
-  for i in {1..30}; do
+  for j in {1..30}; do
     if ss -tnl | grep -q ':8000 '; then
       return 0
     fi
@@ -72,7 +72,7 @@ runTestsOnModel() {
   ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send.sh ${modelName} \"$video_path\" $height $width $fps \"$audio_path\""
 
   # 等待连接建立，最多等待30秒
-  for i in {1..30}; do
+  for k in {1..30}; do
     if check_connection; then
       echo "连接已建立"
       start_time=$(date +%s)
@@ -110,29 +110,40 @@ runTestsOnModel() {
   # 收集结果文件
   mv outvideo.yuv ${resultsDir}/outputvideo_${modelName}.yuv
   mv outaudio.wav ${resultsDir}/outaudio_${modelName}.wav
-  mv webrtc.log ${resultsDir}/webrtc_${modelName}.log
+  mv webrtc.log ${resultsDir}/webrtc_receive_${modelName}.log
   # 远程收集发送端日志
-  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && rm -rf ${resultsDir} && mkdir -p ${resultsDir} && mv webrtc.log ${resultsDir}/webrtc_${modelName}.log"
+  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && rm -rf ${resultsDir} && mkdir -p ${resultsDir} && mv webrtc.log ${resultsDir}/webrtc_send_${modelName}.log"
 }
 
 test_model_list=(
   bob1
-  # heuristic2
+  heuristic2
 )
 
 # 新增视频列表及参数
 declare -A video_params
 video_list=(
   test
-  # akiyo_qcif
+  akiyo_qcif
+  bowing_cif
+  bus_cif
+  carphone_cif
+  claire_qcif
+  coastguard_qcif
+  container_qcif
 )
 # 例如：video_params[视频名]="path height width fps"
 video_params[test]="testmedia/test.yuv 240 320 10"
-video_params[test1]="testmedia/test1.yuv 240 320 10"
 video_params[akiyo_qcif]="testmedia/akiyo_qcif.yuv 144 176 30"
+video_params[bowing_cif]="testmedia/bowing_cif.yuv 288 352 30"
+video_params[bus_cif]="testmedia/bus_cif.yuv 288 352 30"
+video_params[carphone_cif]="testmedia/carphone_cif.yuv 288 352 30"
+video_params[claire_qcif]="testmedia/claire_qcif.yuv 144 176 30"
+video_params[coastguard_qcif]="testmedia/coastguard_qcif.yuv 144 176 30"
+video_params[container_qcif]="testmedia/container_qcif.yuv 144 176 30"
 
 audio_list=(
-  # test
+  test
   test_30
 )
 # 例如：audio_params[音频名]="path"
@@ -140,7 +151,7 @@ declare -A audio_params
 audio_params[test]="testmedia/test.wav"
 audio_params[test_30]="testmedia/test_30.wav"
 
-for i in {1..2}
+for i in {1..5}
 do
   for model in "${test_model_list[@]}"
   do
