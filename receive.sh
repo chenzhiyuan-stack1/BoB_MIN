@@ -1,6 +1,6 @@
 #!/bin/bash
 date=$(date '+%d_%m_%Y_%H%M')
-testid=5
+testid=$1
 MODELDIR="./model"
 RESULTDIR="./results/${testid}/${date}"
 DATA_LOGFILE="data.jsonl"
@@ -24,6 +24,8 @@ runTestsOnModel() {
   modelName=$1
   resultsDir=$2
   rm -rf webrtc.log
+  rm -rf outvideo.yuv
+  rm -rf outaudio.wav
   
   # set active model
   MODEL="${MODELDIR}/${modelName}.pth"
@@ -79,6 +81,7 @@ runTestsOnModel() {
 
   mv outvideo.yuv ${resultsDir}/outputvideo_${modelName}.yuv
   mv outaudio.wav ${resultsDir}/outaudio_${modelName}.wav
+  mv webrtc.log ${resultsDir}/webrtc_${modelName}.log
 }
 
 test_model_list=(
@@ -86,11 +89,11 @@ test_model_list=(
   # gemini
   # hrcc
   # bob_heuristic
-  # bob1
+  bob1
   heuristic2
 )
 
-for i in {1..5}
+for i in {1..2}
 do
   for model in "${test_model_list[@]}"
   do

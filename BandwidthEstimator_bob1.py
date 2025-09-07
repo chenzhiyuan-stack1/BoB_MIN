@@ -182,6 +182,8 @@ class Estimator(object):
             "received_video_bytes": calculate_state.received_video_bytes(packets_list),
             "received_audio_bytes": calculate_state.received_audio_bytes(packets_list),
             "payload_type": calculate_state.payload_type(packets_list),
+            "send_time": calculate_state.send_time(packets_list),
+            "receive_time": calculate_state.receive_time(packets_list)
         }
 
         # 2. 动作

@@ -26,16 +26,6 @@ def num_received_packets(packets_list):
 def received_bytes(packets_list):
     return sum(pkt.size for pkt in packets_list)
 
-def last_receive_time(packets_list):
-    if not packets_list:
-        return 0
-    return packets_list[-1].receive_timestamp
-
-def last_send_time(packets_list):
-    if not packets_list:
-        return 0
-    return packets_list[-1].send_timestamp
-
 # 4. Queuing delay
 # Queuing delay: average delay of packets received in a MI minus the minimum packet delay observed so far, unit: ms.
 def queuing_delay(packets_list, min_seen_delay):
@@ -166,3 +156,13 @@ def payload_type(packets_list):
     if not packets_list:
         return None
     return [pkt.payload_type for pkt in packets_list if pkt.payload_type is not None]
+
+def receive_time(packets_list):
+    if not packets_list:
+        return None
+    return [pk.receive_timestamp for pk in packets_list]
+
+def send_time(packets_list):
+    if not packets_list:
+        return None
+    return [pk.send_timestamp for pk in packets_list]

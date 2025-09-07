@@ -27,3 +27,7 @@ result*/
 
 # 其他
 *.DS_Store
+
+# 每次都会改的文件
+/active_model
+/BandwidthEstimator.py
