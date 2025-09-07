@@ -90,7 +90,9 @@ EOF
 
   if [ -z "$start_time" ]; then
     echo "连接未建立，跳过本轮测试"
+    # 停止本地容器
     docker stop alphartc_receiver >/dev/null 2>&1
+    # 远程停止发送端容器
     ssh -p 2223 knw@202.120.36.216 "docker stop alphartc_sender >/dev/null 2>&1"
     return
   fi
@@ -100,8 +102,11 @@ EOF
     if ! check_connection; then
       end_time=$(date +%s)
       echo "连接已结束"
+      # 停止本地容器
       docker stop alphartc_receiver >/dev/null 2>&1
+      # 远程停止发送端容器
       ssh -p 2223 knw@202.120.36.216 "docker stop alphartc_sender >/dev/null 2>&1"
+      # 计算连接持续时间
       duration=$((end_time - start_time))
       echo "连接持续了 ${duration} 秒"
       break
@@ -142,11 +147,14 @@ do
   do
     modelResultDir=${RESULTDIR}_${model}_${i}
     echo "Running tests for model: $model, iteration: $i"
+    # 清理旧的结果目录
     rm -rf $modelResultDir
     mkdir -p $modelResultDir
+    # 复制对应的模型文件
     cp BandwidthEstimator_${model}.py BandwidthEstimator.py
-
+    # 运行测试
     runTestsOnModel "${model}" ${modelResultDir}
+    # 收集 data.jsonl
     if [ -f "${DATA_LOGFILE}" ]; then
       mv -f ${DATA_LOGFILE} ${modelResultDir}/
     else
