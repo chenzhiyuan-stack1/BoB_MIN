@@ -20,17 +20,51 @@ wait_for_port_listen() {
   return 1
 }
 
+# 随机选video和audio，并远程启动发送端
 runTestsOnModel() {
   modelName=$1
   resultsDir=$2
+
+  # 随机选一个视频
+  video=${video_list[$((RANDOM % ${#video_list[@]}))]}
+  params=(${video_params[$video]})
+  video_path=${params[0]}
+  height=${params[1]}
+  width=${params[2]}
+  fps=${params[3]}
+
+  # 随机选一个音频
+  audio=${audio_list[$((RANDOM % ${#audio_list[@]}))]}
+  audio_path=${audio_params[$audio]}
+
+  # 结构化记录选中的音视频信息，方便后续读取
+  cat > ${resultsDir}/selected_media.json <<EOF
+{
+  "video": {
+    "name": "$video",
+    "path": "$video_path",
+    "height": $height,
+    "width": $width,
+    "fps": $fps
+  },
+  "audio": {
+    "name": "$audio",
+    "path": "$audio_path"
+  }
+}
+EOF
+
+  echo "Selected video: $video (path: $video_path, height: $height, width: $width, fps: $fps)"
+  echo "Selected audio: $audio (path: $audio_path)"
+
   rm -rf webrtc.log
   rm -rf outvideo.yuv
   rm -rf outaudio.wav
-  
+
   # set active model
   MODEL="${MODELDIR}/${modelName}.pth"
   echo $MODEL >active_model
-  
+
   # 启动接收端
   docker run -d --rm --network host -v `pwd`:/app -w /app --name alphartc_receiver --cap-add=NET_ADMIN challenge-env peerconnection_serverless receiver_pyinfer.json
   sleep 1
@@ -40,9 +74,10 @@ runTestsOnModel() {
     docker stop alphartc_receiver >/dev/null 2>&1
     return
   fi
-  # 远程登录并启动发送端
-  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send.sh ${modelName}"
-  # ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && docker run -d --rm --network host -v \$(pwd):/app -w /app --name alphartc_sender --cap-add=NET_ADMIN challenge-env peerconnection_serverless sender_pyinfer.json"
+
+  # 远程登录并启动发送端，传递所有参数
+  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send.sh ${modelName} \"$video_path\" $height $width $fps \"$audio_path\""
+
   # 等待连接建立，最多等待30秒
   for i in {1..30}; do
     if check_connection; then
@@ -55,9 +90,7 @@ runTestsOnModel() {
 
   if [ -z "$start_time" ]; then
     echo "连接未建立，跳过本轮测试"
-    # 停止本地容器
     docker stop alphartc_receiver >/dev/null 2>&1
-    # 停止远程容器（假设远程主机、用户名、端口已知）
     ssh -p 2223 knw@202.120.36.216 "docker stop alphartc_sender >/dev/null 2>&1"
     return
   fi
@@ -67,11 +100,8 @@ runTestsOnModel() {
     if ! check_connection; then
       end_time=$(date +%s)
       echo "连接已结束"
-      # 停止本地容器
       docker stop alphartc_receiver >/dev/null 2>&1
-      # 停止远程容器（假设远程主机、用户名、端口已知）
       ssh -p 2223 knw@202.120.36.216 "docker stop alphartc_sender >/dev/null 2>&1"
-      # 计算连接持续时间
       duration=$((end_time - start_time))
       echo "连接持续了 ${duration} 秒"
       break
@@ -85,13 +115,26 @@ runTestsOnModel() {
 }
 
 test_model_list=(
-  # bob
-  # gemini
-  # hrcc
-  # bob_heuristic
   bob1
   heuristic2
 )
+
+# 新增视频列表及参数
+declare -A video_params
+video_list=(
+  test
+  akiyo_qcif
+)
+# 例如：video_params[视频名]="path height width fps"
+video_params[test]="testmedia/test.yuv 240 320 10"
+video_params[akiyo_qcif]="testmedia/akiyo_qcif.yuv 144 176 30"
+
+audio_list=(
+  test
+)
+# 例如：audio_params[音频名]="path"
+declare -A audio_params
+audio_params[test]="testmedia/test.wav"
 
 for i in {1..2}
 do
@@ -99,14 +142,11 @@ do
   do
     modelResultDir=${RESULTDIR}_${model}_${i}
     echo "Running tests for model: $model, iteration: $i"
-    # 清理旧的结果目录
     rm -rf $modelResultDir
     mkdir -p $modelResultDir
-    # 复制对应的 BandwidthEstimator.py 文件
     cp BandwidthEstimator_${model}.py BandwidthEstimator.py
-    # 运行测试
+
     runTestsOnModel "${model}" ${modelResultDir}
-    # 移动sar日志文件
     if [ -f "${DATA_LOGFILE}" ]; then
       mv -f ${DATA_LOGFILE} ${modelResultDir}/
     else
@@ -114,4 +154,3 @@ do
     fi
   done
 done
-
