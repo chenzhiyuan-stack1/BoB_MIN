@@ -7,6 +7,7 @@ PROBE_TYPES = {100}
 BASE_DELAY = 200  # ms
 
 # 1. Receiving rate (bps)
+# Receiving rate: rate at which the client receives data from the sender during a MI, unit: bps.
 def receiving_rate(packets_list):
     if not packets_list:
         return 0
@@ -16,14 +17,27 @@ def receiving_rate(packets_list):
     return total_bytes * 8 * 1000 / duration
 
 # 2. Number of received packets
+# Number of received packets: total number of packets received in a MI, unit: packet.
 def num_received_packets(packets_list):
     return len(packets_list)
 
 # 3. Received bytes
+# Received bytes: total number of bytes received in a MI, unit: Bytes.
 def received_bytes(packets_list):
     return sum(pkt.size for pkt in packets_list)
 
+def last_receive_time(packets_list):
+    if not packets_list:
+        return 0
+    return packets_list[-1].receive_timestamp
+
+def last_send_time(packets_list):
+    if not packets_list:
+        return 0
+    return packets_list[-1].send_timestamp
+
 # 4. Queuing delay
+# Queuing delay: average delay of packets received in a MI minus the minimum packet delay observed so far, unit: ms.
 def queuing_delay(packets_list, min_seen_delay):
     if not packets_list:
         return 0
@@ -31,7 +45,8 @@ def queuing_delay(packets_list, min_seen_delay):
     avg_delay = sum(delays) / len(delays)
     return avg_delay - min_seen_delay if min_seen_delay is not None else 0
 
-# 5. Delay (avg delay - base delay)
+# 5. Delay (avg delay - base delay) 没啥用
+# Delay: average delay of packets received in a MI minus a fixed base delay of 200ms, unit: ms.
 def delay_minus_base(packets_list, base_delay=BASE_DELAY):
     if not packets_list:
         return 0
@@ -40,6 +55,7 @@ def delay_minus_base(packets_list, base_delay=BASE_DELAY):
     return avg_delay - base_delay
 
 # 6. Minimum seen delay (全局最小)
+# Minimum seen delay: minimum packet delay observed so far, unit: ms.
 def min_seen_delay(packets_list, prev_min=None):
     if not packets_list:
         return prev_min if prev_min is not None else 0
@@ -50,6 +66,7 @@ def min_seen_delay(packets_list, prev_min=None):
     return min_delay
 
 # 7. Delay ratio (avg delay / min delay in MI)
+# Delay ratio: average delay of packets received in a MI divided by the minimum delay of packets received in the same MI, unit: ms/ms.
 def delay_ratio(packets_list):
     if not packets_list:
         return 0
@@ -59,6 +76,7 @@ def delay_ratio(packets_list):
     return avg_delay / min_delay if min_delay > 0 else float('inf')
 
 # 8. Delay average minimum difference
+# Delay average minimum difference: average delay of packets received in a MI minus the minimum delay of packets received in the same MI, unit: ms.
 def delay_avg_min_diff(packets_list):
     if not packets_list:
         return 0
@@ -68,6 +86,7 @@ def delay_avg_min_diff(packets_list):
     return avg_delay - min_delay
 
 # 9. Packet interarrival time (mean)
+# Packet interarrival time: mean interarrival time of packets received in a MI, unit: ms.
 def mean_interarrival(packets_list):
     if len(packets_list) < 2:
         return 0
@@ -76,7 +95,9 @@ def mean_interarrival(packets_list):
     return sum(interarrivals) / len(interarrivals)
 
 # 10. Packet jitter (stddev of interarrival)
+# Packet jitter: standard deviation of interarrival time of packets received in a MI, unit: ms.
 def packet_jitter(packets_list):
+    """Packet jitter: standard deviation of interarrival time of packets received in a MI, unit: ms."""
     if len(packets_list) < 2:
         return 0
     arrival_times = [pkt.receive_timestamp for pkt in packets_list]
@@ -84,9 +105,11 @@ def packet_jitter(packets_list):
     mean_ia = sum(interarrivals) / len(interarrivals)
     if len(interarrivals) < 2:
         return 0
-    return math.sqrt(sum((x - mean_ia) ** 2 for x in interarrivals) / (len(interarrivals)-1))
+    variance = sum((x - mean_ia) ** 2 for x in interarrivals) / (len(interarrivals) - 1)
+    return math.sqrt(variance)
 
 # 11. Packet loss ratio
+# Packet loss ratio: probability of packet loss in a MI, unit: packet/packet.
 def packet_loss_ratio(packets_list):
     seqs = [pkt.sequence_number for pkt in packets_list]
     if not seqs:
@@ -96,6 +119,7 @@ def packet_loss_ratio(packets_list):
     return 1 - received / expected if expected > 0 else 0
 
 # 12. Average number of lost packets (每次丢包的平均丢包数)
+# Average number of lost packets: average number of lost packets given a loss occurs, unit: packet.
 def avg_lost_pkts(packets_list):
     seqs = sorted(pkt.sequence_number for pkt in packets_list)
     lost_counts = []
@@ -106,6 +130,7 @@ def avg_lost_pkts(packets_list):
     return sum(lost_counts) / len(lost_counts) if lost_counts else 0
 
 # 13. Video packets probability
+# Video packets probability: proportion of video packets in the packets received in a MI, unit: packet/packet.
 def video_prob(packets_list):
     if not packets_list:
         return 0
@@ -113,6 +138,7 @@ def video_prob(packets_list):
     return video_cnt / len(packets_list)
 
 # 14. Audio packets probability
+# Audio packets probability: proportion of audio packets in the packets received in a MI, unit: packet/packet.
 def audio_prob(packets_list):
     if not packets_list:
         return 0
@@ -120,6 +146,7 @@ def audio_prob(packets_list):
     return audio_cnt / len(packets_list)
 
 # 15. Probing packets probability
+# Probing packets probability: proportion of probing packets in the packets received in a MI, unit: packet/packet.
 def probe_prob(packets_list):
     if not packets_list:
         return 0

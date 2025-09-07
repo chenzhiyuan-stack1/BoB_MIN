@@ -631,7 +631,7 @@ class Estimator(object):
         
         # 维护global_min_delay
         if self.global_min_delay is None:
-            self.global_min_delay = calculate_state.min_seen_delay(self.receive_packets_list, 0)
+            self.global_min_delay = calculate_state.min_seen_delay(self.receive_packets_list, float("inf"))
         else:
             current_min = calculate_state.min_seen_delay(self.receive_packets_list, self.global_min_delay)
             if current_min < self.global_min_delay:

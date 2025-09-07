@@ -1,6 +1,6 @@
 #!/bin/bash
 date=$(date '+%d_%m_%Y_%H%M')
-testid=4
+testid=5
 MODELDIR="./model"
 RESULTDIR="./results/${testid}/${date}"
 DATA_LOGFILE="data.jsonl"
