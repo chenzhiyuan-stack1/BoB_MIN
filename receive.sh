@@ -108,11 +108,11 @@ runTestsOnModel() {
   done
 
   # 收集结果文件
-  mv outvideo.yuv ${resultsDir}/outputvideo_${modelName}.yuv
-  mv outaudio.wav ${resultsDir}/outaudio_${modelName}.wav
-  mv webrtc.log ${resultsDir}/webrtc_receive_${modelName}.log
+  mv outvideo.yuv ${resultsDir}/outputvideo_${modelName}_${video}_${audio}.yuv
+  mv outaudio.wav ${resultsDir}/outaudio_${modelName}_${video}_${audio}.wav
+  mv webrtc.log ${resultsDir}/webrtc_receive_${modelName}_${video}_${audio}.log
   # 远程收集发送端日志
-  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && rm -rf ${resultsDir} && mkdir -p ${resultsDir} && mv webrtc.log ${resultsDir}/webrtc_send_${modelName}.log"
+  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && rm -rf ${resultsDir} && mkdir -p ${resultsDir} && mv webrtc.log ${resultsDir}/webrtc_send_${modelName}_${video}_${audio}.log"
 }
 
 test_model_list=(
