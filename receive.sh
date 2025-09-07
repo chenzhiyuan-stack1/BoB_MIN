@@ -55,11 +55,11 @@ runTestsOnModel() {
     '.save_to_file.video.width=$width
      | .save_to_file.video.height=$height
      | .save_to_file.video.fps=$fps' \
-    receiver_pyinfer.json > receiver_pyinfer_tmp.json && mv receiver_pyinfer_tmp.json receiver_pyinfer.json
+    receiver_pyinfer.json > receiver_pyinfer_tmp.json && mv receiver_pyinfer_tmp.json receiver_pyinfer_online.json
 
   # 启动接收端
   echo "Starting receiver..."
-  docker run -d --rm --network host -v `pwd`:/app -w /app --name alphartc_receiver --cap-add=NET_ADMIN challenge-env peerconnection_serverless receiver_pyinfer.json
+  docker run -d --rm --network host -v `pwd`:/app -w /app --name alphartc_receiver --cap-add=NET_ADMIN challenge-env peerconnection_serverless receiver_pyinfer_online.json
   sleep 1
   # 等待端口监听
   if ! wait_for_port_listen; then
@@ -116,7 +116,7 @@ runTestsOnModel() {
 }
 
 test_model_list=(
-  bob1
+  # bob1
   heuristic2
 )
 

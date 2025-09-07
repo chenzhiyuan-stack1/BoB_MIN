@@ -41,8 +41,8 @@
       "file_path": "outaudio.wav"
     },
     "video": {
-      "width": 176,
-      "height": 144,
+      "width": 352,
+      "height": 288,
       "fps": 30,
       "file_path": "outvideo.yuv"
     }

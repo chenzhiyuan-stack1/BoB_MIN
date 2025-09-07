@@ -27,9 +27,9 @@ runTestsOnModel() {
        | .video_source.video_file.enabled=true
        | .audio_source.audio_file.file_path=$apath
        | .audio_source.audio_file.enabled=true' \
-      sender_pyinfer.json > sender_pyinfer_tmp.json && mv sender_pyinfer_tmp.json sender_pyinfer.json
+      sender_pyinfer.json > sender_pyinfer_tmp.json && mv sender_pyinfer_tmp.json sender_pyinfer_online.json
 
-    docker run -d --rm --network host -v `pwd`:/app -w /app --name alphartc_sender --cap-add=NET_ADMIN challenge-env peerconnection_serverless sender_pyinfer.json
+    docker run -d --rm --network host -v `pwd`:/app -w /app --name alphartc_sender --cap-add=NET_ADMIN challenge-env peerconnection_serverless sender_pyinfer_online.json
 }
 
 echo "Running tests for model: ${modelName}"
