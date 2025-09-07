@@ -127,7 +127,7 @@ test_model_list=(
 # 新增视频列表及参数
 declare -A video_params
 video_list=(
-  test1
+  test
   # akiyo_qcif
 )
 # 例如：video_params[视频名]="path height width fps"
@@ -137,11 +137,12 @@ video_params[akiyo_qcif]="testmedia/akiyo_qcif.yuv 144 176 30"
 
 audio_list=(
   # test
-  test_30
+  test
 )
 # 例如：audio_params[音频名]="path"
 declare -A audio_params
 audio_params[test]="testmedia/test.wav"
+audio_params[test_30]="testmedia/test_30.wav"
 
 for i in {1..2}
 do

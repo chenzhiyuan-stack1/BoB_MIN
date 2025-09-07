@@ -42,6 +42,7 @@
         "enabled": false
     },
     "logging": {
-        "enabled": true
+        "enabled": true,
+        "log_output_path": "webrtc.log"
     }
 }
