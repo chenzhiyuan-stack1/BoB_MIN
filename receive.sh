@@ -121,14 +121,14 @@ EOF
 
 test_model_list=(
   bob1
-  heuristic2
+  # heuristic2
 )
 
 # 新增视频列表及参数
 declare -A video_params
 video_list=(
-  test
-  akiyo_qcif
+  test1
+  # akiyo_qcif
 )
 # 例如：video_params[视频名]="path height width fps"
 video_params[test]="testmedia/test.yuv 240 320 10"
