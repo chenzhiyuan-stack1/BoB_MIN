@@ -42,6 +42,6 @@
         "enabled": false
     },
     "logging": {
-        "enabled": false
+        "enabled": true
     }
 }

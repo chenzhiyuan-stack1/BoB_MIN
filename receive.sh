@@ -132,10 +132,12 @@ video_list=(
 )
 # 例如：video_params[视频名]="path height width fps"
 video_params[test]="testmedia/test.yuv 240 320 10"
+video_params[test1]="testmedia/test1.yuv 240 320 10"
 video_params[akiyo_qcif]="testmedia/akiyo_qcif.yuv 144 176 30"
 
 audio_list=(
-  test
+  # test
+  test_30
 )
 # 例如：audio_params[音频名]="path"
 declare -A audio_params
