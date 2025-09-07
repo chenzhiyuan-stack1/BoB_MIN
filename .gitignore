@@ -31,3 +31,6 @@ result*/
 # 每次都会改的文件
 /active_model
 /BandwidthEstimator.py
+
+# raw_media
+/raw_media/*
