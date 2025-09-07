@@ -37,26 +37,10 @@ runTestsOnModel() {
   audio=${audio_list[$((RANDOM % ${#audio_list[@]}))]}
   audio_path=${audio_params[$audio]}
 
-  # 结构化记录选中的音视频信息，方便后续读取
-  cat > ${resultsDir}/selected_media.json <<EOF
-{
-  "video": {
-    "name": "$video",
-    "path": "$video_path",
-    "height": $height,
-    "width": $width,
-    "fps": $fps
-  },
-  "audio": {
-    "name": "$audio",
-    "path": "$audio_path"
-  }
-}
-EOF
-
   echo "Selected video: $video (path: $video_path, height: $height, width: $width, fps: $fps)"
   echo "Selected audio: $audio (path: $audio_path)"
 
+  # 清理上一轮接收端的文件和日志
   rm -rf webrtc.log
   rm -rf outvideo.yuv
   rm -rf outaudio.wav
@@ -64,6 +48,13 @@ EOF
   # set active model
   MODEL="${MODELDIR}/${modelName}.pth"
   echo $MODEL >active_model
+
+  # 修改 receiver_pyinfer.json 的 save_to_file.video 配置
+  jq --argjson width $width --argjson height $height --argjson fps $fps \
+    '.save_to_file.video.width=$width
+     | .save_to_file.video.height=$height
+     | .save_to_file.video.fps=$fps' \
+    receiver_pyinfer.json > receiver_pyinfer_tmp.json && mv receiver_pyinfer_tmp.json receiver_pyinfer.json
 
   # 启动接收端
   docker run -d --rm --network host -v `pwd`:/app -w /app --name alphartc_receiver --cap-add=NET_ADMIN challenge-env peerconnection_serverless receiver_pyinfer.json
@@ -75,7 +66,7 @@ EOF
     return
   fi
 
-  # 远程登录并启动发送端，传递所有参数
+  # 远程登录并启动发送端，传递所有参数（多加一个 resultsDir）
   ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send.sh ${modelName} \"$video_path\" $height $width $fps \"$audio_path\""
 
   # 等待连接建立，最多等待30秒
@@ -114,9 +105,12 @@ EOF
     sleep 1
   done
 
+  # 收集结果文件
   mv outvideo.yuv ${resultsDir}/outputvideo_${modelName}.yuv
   mv outaudio.wav ${resultsDir}/outaudio_${modelName}.wav
   mv webrtc.log ${resultsDir}/webrtc_${modelName}.log
+  # 远程收集发送端日志
+  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && rm -rf ${resultsDir} && mkdir -p ${resultsDir} && mv webrtc.log ${resultsDir}/webrtc_${modelName}.log"
 }
 
 test_model_list=(
@@ -127,8 +121,8 @@ test_model_list=(
 # 新增视频列表及参数
 declare -A video_params
 video_list=(
-  test
-  # akiyo_qcif
+  # test
+  akiyo_qcif
 )
 # 例如：video_params[视频名]="path height width fps"
 video_params[test]="testmedia/test.yuv 240 320 10"
@@ -137,7 +131,7 @@ video_params[akiyo_qcif]="testmedia/akiyo_qcif.yuv 144 176 30"
 
 audio_list=(
   # test
-  test
+  test_30
 )
 # 例如：audio_params[音频名]="path"
 declare -A audio_params

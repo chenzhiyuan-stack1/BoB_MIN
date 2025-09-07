@@ -31,7 +31,7 @@
             "enabled": false
         },
         "audio_file": {
-            "enabled": true,
+            "enabled": false,
             "file_path": "testmedia/test.wav"
         }
     },

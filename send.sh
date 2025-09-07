@@ -14,6 +14,9 @@ runTestsOnModel() {
     MODEL="${MODELDIR}/${modelName}.pth"
     echo $MODEL >active_model
 
+    # 清理上一轮发送端的文件和日志
+    rm -rf webrtc.log
+
     # 修改 sender_pyinfer.json 的 video_file 和 audio_file 配置
     jq --arg vpath "$video_path" --argjson height $height --argjson width $width --argjson fps $fps \
        --arg apath "$audio_path" \
