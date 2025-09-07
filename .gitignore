@@ -31,8 +31,8 @@ result*/
 # 每次都会改的文件
 /active_model
 /BandwidthEstimator.py
-/sender_pyinfer.json
-/receiver_pyinfer.json
+# /sender_pyinfer.json
+# /receiver_pyinfer.json
 
 # raw_media
 /raw_media/*
