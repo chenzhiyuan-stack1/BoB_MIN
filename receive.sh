@@ -50,6 +50,7 @@ runTestsOnModel() {
   echo $MODEL >active_model
 
   # 修改 receiver_pyinfer.json 的 save_to_file.video 配置
+  echo "Configuring receiver for video width: $width, height: $height, fps: $fps"
   jq --argjson width $width --argjson height $height --argjson fps $fps \
     '.save_to_file.video.width=$width
      | .save_to_file.video.height=$height
@@ -57,6 +58,7 @@ runTestsOnModel() {
     receiver_pyinfer.json > receiver_pyinfer_tmp.json && mv receiver_pyinfer_tmp.json receiver_pyinfer.json
 
   # 启动接收端
+  echo "Starting receiver..."
   docker run -d --rm --network host -v `pwd`:/app -w /app --name alphartc_receiver --cap-add=NET_ADMIN challenge-env peerconnection_serverless receiver_pyinfer.json
   sleep 1
   # 等待端口监听
@@ -121,8 +123,8 @@ test_model_list=(
 # 新增视频列表及参数
 declare -A video_params
 video_list=(
-  # test
-  akiyo_qcif
+  test
+  # akiyo_qcif
 )
 # 例如：video_params[视频名]="path height width fps"
 video_params[test]="testmedia/test.yuv 240 320 10"
