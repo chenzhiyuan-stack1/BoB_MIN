@@ -1,0 +1,14 @@
+rate 2Mbit
+delay 50ms
+loss 0%
+wait 5s
+
+rate 50Kbit
+delay 200ms
+loss 5%
+wait 5s
+
+rate 50Kbit
+delay 400ms
+loss 50%
+wait 10s

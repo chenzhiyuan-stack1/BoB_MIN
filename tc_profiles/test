@@ -1,0 +1,9 @@
+rate 200kbit
+delay 50ms
+loss 0%
+wait 5s
+
+rate 100kbit
+delay 100ms
+loss 5%
+wait 5s
