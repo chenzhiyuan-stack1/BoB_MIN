@@ -3,8 +3,8 @@
 TC="tc"
 INTERFACE_1=enp4s0
 PORT_1=8000
-
 FILE_1=$1
+
 if [ -z $FILE_1 ]; then
   echo "policy file name has to be specified"
   exit 1;
@@ -21,36 +21,42 @@ parsePolicyFile () {
     latestLoss="0%";
     latestDelay="0ms";
     while read -r line; do
+      # echo "hello"
+      # echo "$line"
       if [[ $line == \#* ]];then
         continue; 
       else
         keys=($line)
         comm=${keys[0]}
         value=${keys[1]}
-	case $comm in
-	  rate)
-	    echo "setting rate on $device $classId $value"
+	echo "$comm"
+  case $comm in
+    rate)
+      echo "setting rate on $device $classId $value"
       burst=`awk "BEGIN {print $value/800*1000}"`
-	    $TC class change dev $device parent 1: classid 1:$classId htb rate $value burst ${burst} cburst ${burst}
-	    $TC class change dev $device parent 1: classid 1:$childClassId htb rate $value burst ${burst} cburst ${burst}
-	    ;;
+      $TC class change dev $device parent 1: classid 1:$classId htb rate $value burst ${burst} cburst ${burst}
+      $TC class change dev $device parent 1: classid 1:$childClassId htb rate $value burst ${burst} cburst ${burst}
+      ;;
     loss)
       latestLoss=$value
-      echo "setting loss on $device $classId $latestLoss"
-      $TC qdisc change dev $device parent 1:$classId netem loss $latestLoss delay $latestDelay 2>/dev/null \
-      || $TC qdisc add dev $device parent 1:$classId netem loss $latestLoss delay $latestDelay
+      echo "setting loss on $device $childClassId $latestLoss"
+      # 尝试修改现有的 netem 规则，如果失败（说明 netem 不存在），则添加一个新的 netem 规则
+      $TC qdisc change dev $device parent 1:$childClassId netem loss $latestLoss delay $latestDelay 2>/dev/null \
+      || $TC qdisc add dev $device parent 1:$childClassId netem loss $latestLoss delay $latestDelay
       ;;
     delay)
       latestDelay=$value
-      echo "setting delay on $device $classId $latestDelay"
-      $TC qdisc change dev $device parent 1:$classId netem loss $latestLoss delay $latestDelay 2>/dev/null \
-      || $TC qdisc add dev $device parent 1:$classId netem loss $latestLoss delay $latestDelay
+      echo "setting delay on $device $childClassId $latestDelay"
+      # 逻辑同上
+      $TC qdisc change dev $device parent 1:$childClassId netem loss $latestLoss delay $latestDelay 2>/dev/null \
+      || $TC qdisc add dev $device parent 1:$childClassId netem loss $latestLoss delay $latestDelay
       ;;
-	   wait)
-	    echo "waiting for $device $value seconds"
-	    sleep $value
-	    ;;
-	esac
+    wait)
+      echo "waiting for $device $value seconds"
+      echo "sleep $value"
+      sleep $value
+      ;;
+  esac
       fi
     done < "$filename"
   fi
@@ -87,7 +93,7 @@ while [[ -v PORT_$currentIfNo ]]; do
   childIfNo=${currentIfNo}0
   $TC class add dev $interface parent 1: classid 1:$currentIfNo htb rate 1024Mbps
   $TC class add dev $interface parent 1:$currentIfNo classid 1:$childIfNo htb rate 1024Mbps 
-  $TC qdisc add dev $interface parent 1:$childIfNo handle 10: sfq perturb 10
+  # $TC qdisc add dev $interface parent 1:$childIfNo handle 10: sfq perturb 10
   $TC filter add dev $interface parent 1:0 protocol ip prio 1 u32 match ip sport $port 0xffff flowid 1:$childIfNo
   policyLoop $interface $file $currentIfNo $childIfNo & 
   ((currentIfNo++))
@@ -95,3 +101,4 @@ done
 
 wait
 
+# tc qdisc add dev enp4s0 root netem delay 100ms loss 20% rate 50kbit
