@@ -1,7 +1,8 @@
-TC='/sbin/tc'
-INTERFACE1=enp4s0
+#!/bin/bash
+TC='tc'
+INTERFACE1=enp0s31f6
 
-killall tc_policy.sh 1>/dev/null 2>&1
+killall tc_policy_min3.sh 1>/dev/null 2>&1
 killall sleep 1>/dev/null 2>&1
 killall tc 1>/dev/null 2>&1
 

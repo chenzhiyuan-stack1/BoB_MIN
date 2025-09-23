@@ -93,7 +93,7 @@ while [[ -v PORT_$currentIfNo ]]; do
   childIfNo=${currentIfNo}0
   $TC class add dev $interface parent 1: classid 1:$currentIfNo htb rate 1024Mbps
   $TC class add dev $interface parent 1:$currentIfNo classid 1:$childIfNo htb rate 1024Mbps 
-  # $TC qdisc add dev $interface parent 1:$childIfNo handle 10: sfq perturb 10
+  $TC qdisc add dev $interface parent 1:$childIfNo handle 10: sfq perturb 10
   $TC filter add dev $interface parent 1:0 protocol ip prio 1 u32 match ip sport $port 0xffff flowid 1:$childIfNo
   policyLoop $interface $file $currentIfNo $childIfNo & 
   ((currentIfNo++))

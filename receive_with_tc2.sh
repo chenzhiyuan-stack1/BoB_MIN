@@ -107,7 +107,8 @@ runTestsOnModel() {
   # 随机选一个 tc profile
   tc_profile=${tc_profiles[$((RANDOM % ${#tc_profiles[@]}))]}
   echo "选用链路 profile: $tc_profile"
-  docker exec -w /app/tc_profiles alphartc_receiver bash ./tc_policy_min4.sh $tc_profile
+  # 在send端执行tc命令，限制发往receive端8000端口的带宽、延迟和丢包率
+  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && docker exec -w /app/tc_profiles alphartc_sender bash ./tc_policy_min3.sh $tc_profile"
 
   # 等待连接结束
   while true; do
@@ -115,14 +116,7 @@ runTestsOnModel() {
       end_time=$(date +%s)
       echo "连接已结束"
       # 清理 tc
-      status=$(docker inspect -f '{{.State.Status}}' alphartc_receiver 2>/dev/null)
-      if [ "$status" = "running" ]; then
-        docker exec -w /app/tc_profiles alphartc_receiver bash ./tc_clear_min.sh
-      else
-        echo "alphartc_receiver 已退出，无法清理 tc"
-        # 宿主机兜底清理
-        sudo bash /home/min414/data2/BoB_MIN/tc_profiles/tc_clear_min.sh
-      fi
+      ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && sudo tc_profiles/tc_clear_min.sh"
 
       # 停止并删除容器
       if docker ps | grep -q alphartc_receiver; then
