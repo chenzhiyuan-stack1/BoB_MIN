@@ -18,8 +18,13 @@ parsePolicyFile () {
   if [ -z "$filename" ] || [ -z "$classId" ];then
     echo "filename and classid paramters required"
   else
-    latestLoss="0%";
-    latestDelay="0ms";
+    # 只在第一次进入时初始化
+    if [ -z "$latestLoss" ]; then
+      latestLoss="0%"
+    fi
+    if [ -z "$latestDelay" ]; then
+      latestDelay="0ms"
+    fi
     while read -r line; do
       if [[ $line == \#* ]];then
         continue;
@@ -27,34 +32,27 @@ parsePolicyFile () {
         keys=($line)
         comm=${keys[0]}
         value=${keys[1]}
-  case $comm in
-    rate)
-      echo "setting rate on $device $classId $value"
-      # 【改动】简化 burst 和 cburst 的设置。
-      # 直接让 tc 处理单位，并移除复杂的 burst 计算，使用 tc 的默认值通常就足够了。
-      # 这使得命令更清晰，且不易出错。
-      $TC class change dev $device parent 1: classid 1:$classId htb rate $value
-      $TC class change dev $device parent 1: classid 1:$childClassId htb rate $value
-      ;;
-    loss)
-      latestLoss=$value
-      echo "setting loss on $device $childClassId $latestLoss"
-      # 【改动】使用 replace 命令代替 change || add 组合。
-      # replace 命令的效果是：如果目标队列存在，就修改它；如果不存在，就创建它。
-      # 这比原来的写法更简洁、更健壮，功能完全相同。
-      $TC qdisc replace dev $device parent 1:$childClassId handle 10: netem loss $latestLoss delay $latestDelay
-      ;;
-    delay)
-      latestDelay=$value
-      echo "setting delay on $device $childClassId $latestDelay"
-      # 【改动】同样使用 replace 命令，保持逻辑一致。
-      $TC qdisc replace dev $device parent 1:$childClassId handle 10: netem loss $latestLoss delay $latestDelay
-      ;;
-    wait)
-      echo "waiting for $device $value seconds"
-      sleep $value
-      ;;
-  esac
+        case $comm in
+          rate)
+            echo "setting rate on $device $classId $value"
+            $TC class change dev $device parent 1: classid 1:$classId htb rate $value
+            $TC class change dev $device parent 1: classid 1:$childClassId htb rate $value
+            ;;
+          loss)
+            latestLoss=$value
+            echo "setting loss on $device $childClassId $latestLoss"
+            $TC qdisc replace dev $device parent 1:$childClassId handle 10: netem loss $latestLoss delay $latestDelay
+            ;;
+          delay)
+            latestDelay=$value
+            echo "setting delay on $device $childClassId $latestDelay"
+            $TC qdisc replace dev $device parent 1:$childClassId handle 10: netem loss $latestLoss delay $latestDelay
+            ;;
+          wait)
+            echo "waiting for $device $value seconds"
+            sleep $value
+            ;;
+        esac
       fi
     done < "$filename"
   fi
