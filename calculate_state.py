@@ -166,3 +166,8 @@ def send_time(packets_list):
     if not packets_list:
         return None
     return [pk.send_timestamp for pk in packets_list]
+
+def packet_number(packets_list):
+    if not packets_list:
+        return None
+    return [pk.sequence_number for pk in packets_list]

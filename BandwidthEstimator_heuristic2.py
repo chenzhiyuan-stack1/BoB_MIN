@@ -589,7 +589,8 @@ class Estimator(object):
             "received_audio_bytes": calculate_state.received_audio_bytes(packets_list),
             "payload_type": calculate_state.payload_type(packets_list),
             "send_time": calculate_state.send_time(packets_list),
-            "receive_time": calculate_state.receive_time(packets_list)
+            "receive_time": calculate_state.receive_time(packets_list),
+            "sequence_number": calculate_state.packet_number(packets_list)
         }
 
         # 2. 动作

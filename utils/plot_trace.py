@@ -21,7 +21,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-input_path = 'results/19'
+input_path = 'results/20'
 
 def get_dynamic_ylim(data, margin=0.05):
     arr = np.array(data)
