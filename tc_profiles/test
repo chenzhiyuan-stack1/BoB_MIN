@@ -1,6 +1,6 @@
 rate 1200kbit
 delay 30ms
-loss 0%
+loss 1%
 wait 5s
 rate 200kbit
 delay 100ms
@@ -8,7 +8,7 @@ loss 15%
 wait 4s
 rate 1000kbit
 delay 40ms
-loss 0%
+loss 1%
 wait 5s
 rate 300kbit
 delay 120ms
@@ -16,7 +16,7 @@ loss 20%
 wait 4s
 rate 1200kbit
 delay 30ms
-loss 0%
+loss 1%
 wait 5s
 rate 400kbit
 delay 80ms
@@ -24,7 +24,7 @@ loss 10%
 wait 2s
 rate 1000kbit
 delay 40ms
-loss 0%
+loss 1%
 wait 2s
 rate 300kbit
 delay 120ms
@@ -32,7 +32,7 @@ loss 20%
 wait 2s
 rate 1200kbit
 delay 30ms
-loss 0%
+loss 1%
 wait 2s
 rate 800kbit
 delay 50ms
