@@ -100,22 +100,67 @@ def packet_jitter(packets_list):
 
 # 11. Packet loss ratio
 # Packet loss ratio: probability of packet loss in a MI, unit: packet/packet.
+# def packet_loss_ratio(packets_list):
+#     seqs = [pkt.sequence_number for pkt in packets_list]
+#     if not seqs:
+#         return 0
+#     expected = max(seqs) - min(seqs) + 1
+#     received = len(seqs)
+#     return 1 - received / expected if expected > 0 else 0
 def packet_loss_ratio(packets_list):
-    seqs = [pkt.sequence_number for pkt in packets_list]
-    if not seqs:
+    # 【关键改动】: 过滤掉重传包 (RTX, type 122) 和其他非视频媒体包。
+    # 丢包率必须在单一的、原始的媒体流上计算，否则序列号空间不同会导致计算结果完全错误。
+    # 我们只关心原始视频包 (如 type 125) 的序列号。
+    seqs = sorted([pkt.sequence_number for pkt in packets_list if pkt.payload_type not in {122, 124}]) # 122是RTX, 124是ULPFEC
+
+    if len(seqs) < 2: # 如果过滤后包太少，无法判断丢包，则认为没有丢包
         return 0
+    
+    # 使用过滤后的序列号进行计算
     expected = max(seqs) - min(seqs) + 1
     received = len(seqs)
-    return 1 - received / expected if expected > 0 else 0
+
+    # 检查序列号是否发生回绕 (wrap-around)，这是一个健壮性处理
+    # WebRTC 的序列号是 16-bit 的，会从 65535 回绕到 0
+    if expected > 30000: # 如果序列号跨度异常大，很可能是发生了回绕
+        # 简单的回绕处理：找到最大的间隔，认为那里是回绕点
+        max_gap = 0
+        for i in range(1, len(seqs)):
+            gap = seqs[i] - seqs[i-1]
+            if gap > max_gap:
+                max_gap = gap
+        
+        # 从总跨度中减去这个巨大的“伪”间隔
+        expected = expected - max_gap + 1
+
+    if expected <= 0:
+        return 0
+
+    loss_ratio = (expected - received) / expected
+    return max(0, loss_ratio) # 确保结果不会是负数
 
 # 12. Average number of lost packets (每次丢包的平均丢包数)
 # Average number of lost packets: average number of lost packets given a loss occurs, unit: packet.
+# def avg_lost_pkts(packets_list):
+#     seqs = sorted(pkt.sequence_number for pkt in packets_list)
+#     lost_counts = []
+#     for i in range(1, len(seqs)):
+#         gap = seqs[i] - seqs[i-1] - 1
+#         if gap > 0:
+#             lost_counts.append(gap)
+#     return sum(lost_counts) / len(lost_counts) if lost_counts else 0
 def avg_lost_pkts(packets_list):
-    seqs = sorted(pkt.sequence_number for pkt in packets_list)
+    # 【关键改动】: 同样，只在原始媒体流上计算丢包间隔。
+    seqs = sorted([pkt.sequence_number for pkt in packets_list if pkt.payload_type not in {122, 124}])
+
+    if len(seqs) < 2:
+        return 0
+
     lost_counts = []
     for i in range(1, len(seqs)):
         gap = seqs[i] - seqs[i-1] - 1
-        if gap > 0:
+        # 同样需要考虑序列号回绕，忽略异常大的 gap
+        if gap > 0 and gap < 1000: # 假设一次连续丢包不会超过1000个
             lost_counts.append(gap)
     return sum(lost_counts) / len(lost_counts) if lost_counts else 0
 
