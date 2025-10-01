@@ -18,10 +18,10 @@ import os
 import json
 import numpy as np
 import matplotlib
+import sys
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-input_path = 'results/20'
 
 def get_dynamic_ylim(data, margin=0.05):
     arr = np.array(data)
@@ -86,6 +86,11 @@ def plot_trace(data_file, save_dir):
     plt.close()
 
 if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Usage: python plot_trace.py <id>")
+        sys.exit(1)
+    id = sys.argv[1]
+    input_path = 'results/' + id
     for folder in os.listdir(input_path):
         folder_path = os.path.join(input_path, folder)
         data_file = os.path.join(folder_path, 'data.jsonl')

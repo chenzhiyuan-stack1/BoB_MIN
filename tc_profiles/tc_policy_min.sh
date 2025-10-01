@@ -20,10 +20,10 @@ parsePolicyFile () {
   else
     # 只在第一次进入时初始化
     if [ -z "$latestLoss" ]; then
-      latestLoss="0%"
+      latestLoss="1%"
     fi
     if [ -z "$latestDelay" ]; then
-      latestDelay="0ms"
+      latestDelay="1ms"
     fi
     while read -r line; do
       if [[ $line == \#* ]];then
