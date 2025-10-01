@@ -8,13 +8,20 @@ BASE_DELAY = 200  # ms
 
 # 1. Receiving rate (bps)
 # Receiving rate: rate at which the client receives data from the sender during a MI, unit: bps.
+# def receiving_rate(packets_list):
+#     if not packets_list or len(packets_list) < 2:
+#         return 0
+#     total_bytes = sum(pkt.size for pkt in packets_list)
+#     duration = packets_list[-1].receive_timestamp - packets_list[0].receive_timestamp
+#     if duration <= 0:
+#         return 0
+#     return total_bytes * 8 * 1000 / duration
 def receiving_rate(packets_list):
-    if not packets_list or len(packets_list) < 2:
+    if not packets_list:
         return 0
     total_bytes = sum(pkt.size for pkt in packets_list)
     duration = packets_list[-1].receive_timestamp - packets_list[0].receive_timestamp
-    if duration <= 0:
-        return 0
+    if duration <= 0: duration = 200
     return total_bytes * 8 * 1000 / duration
 
 # 2. Number of received packets
