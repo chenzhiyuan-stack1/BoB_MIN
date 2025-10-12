@@ -590,7 +590,16 @@ class Estimator(object):
             "payload_type": calculate_state.payload_type(packets_list),
             "send_time": calculate_state.send_time(packets_list),
             "receive_time": calculate_state.receive_time(packets_list),
-            "sequence_number": calculate_state.packet_number(packets_list)
+            "sequence_number": calculate_state.packet_number(packets_list),
+            "all_payload_type": calculate_state.all_payload_type(packets_list),
+            "all_sequence_number": calculate_state.all_sequence_number(packets_list),
+            "all_send_timestamp": calculate_state.all_send_timestamp(packets_list),
+            "all_ssrc": calculate_state.all_ssrc(packets_list),
+            "all_padding_length": calculate_state.all_padding_length(packets_list),
+            "all_header_length": calculate_state.all_header_length(packets_list),
+            "all_receive_timestamp": calculate_state.all_receive_timestamp(packets_list),
+            "all_payload_size": calculate_state.all_payload_size(packets_list),
+            "all_bandwidth_prediction": calculate_state.all_bandwidth_prediction(packets_list),
         }
 
         # 2. 动作

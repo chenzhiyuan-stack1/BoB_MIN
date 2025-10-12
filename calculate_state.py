@@ -224,3 +224,30 @@ def packet_number(packets_list):
     if not packets_list:
         return None
     return [pk.sequence_number for pk in packets_list]
+
+def all_payload_type(packets_list):
+    return [pkt.payload_type for pkt in packets_list]
+
+def all_sequence_number(packets_list):
+    return [pkt.sequence_number for pkt in packets_list]
+
+def all_send_timestamp(packets_list):
+    return [pkt.send_timestamp for pkt in packets_list]
+
+def all_ssrc(packets_list):
+    return [pkt.ssrc for pkt in packets_list]
+
+def all_padding_length(packets_list):
+    return [pkt.padding_length for pkt in packets_list]
+
+def all_header_length(packets_list):
+    return [pkt.header_length for pkt in packets_list]
+
+def all_receive_timestamp(packets_list):
+    return [pkt.receive_timestamp for pkt in packets_list]
+
+def all_payload_size(packets_list):
+    return [pkt.payload_size for pkt in packets_list]
+
+def all_bandwidth_prediction(packets_list):
+    return [pkt.bandwidth_prediction for pkt in packets_list]
