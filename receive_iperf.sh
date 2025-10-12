@@ -49,13 +49,13 @@ runTestsOnModel() {
   MODEL="${MODELDIR}/${modelName}.pth"
   echo $MODEL >active_model
 
-  # 修改 receiver_pyinfer.json 的 save_to_file.video 配置
+  # 修改 receiver_pyinfer_iperf.json 的 save_to_file.video 配置
   echo "Configuring receiver for video width: $width, height: $height, fps: $fps"
   jq --argjson width $width --argjson height $height --argjson fps $fps \
     '.save_to_file.video.width=$width
      | .save_to_file.video.height=$height
      | .save_to_file.video.fps=$fps' \
-    receiver_pyinfer.json > receiver_pyinfer_tmp.json && mv receiver_pyinfer_tmp.json receiver_pyinfer_online.json
+    receiver_pyinfer_iperf.json > receiver_pyinfer_tmp.json && mv receiver_pyinfer_tmp.json receiver_pyinfer_online.json
 
   # 启动接收端
   echo "Starting receiver..."
