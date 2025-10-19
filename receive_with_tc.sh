@@ -182,7 +182,7 @@ declare -A audio_params
 audio_params[test]="testmedia/test.wav"
 audio_params[test_30]="testmedia/test_30.wav"
 
-for i in {1..2}
+for i in {1..5}
 do
   for model in "${test_model_list[@]}"
   do
