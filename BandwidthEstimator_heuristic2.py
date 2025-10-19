@@ -28,8 +28,9 @@ class HeuristicEstimator(object):
         self.smoothed_delay_list = collections.deque([])
 
         self.state = 'Hold'
-        self.last_bandwidth_estimation = 20 * 1000
+        # self.last_bandwidth_estimation = 20 * 1000
         # self.last_bandwidth_estimation = 900 * 1000
+        self.last_bandwidth_estimation = 300 * 1000
         self.avg_max_bitrate_kbps_ = -1
         self.var_max_bitrate_kbps_ = -1
         self.rate_control_region_ = "kRcMaxUnknown"
@@ -57,8 +58,9 @@ class HeuristicEstimator(object):
         self.smoothed_delay_list = collections.deque([])
 
         self.state = 'Hold'
-        self.last_bandwidth_estimation = 20 * 1000
+        # self.last_bandwidth_estimation = 20 * 1000
         # self.last_bandwidth_estimation = 900 * 1000
+        self.last_bandwidth_estimation = 300 * 1000
         self.avg_max_bitrate_kbps_ = -1
         self.var_max_bitrate_kbps_ = -1
         self.rate_control_region_ = "kRcMaxUnknown"
@@ -169,7 +171,8 @@ class HeuristicEstimator(object):
         if len(self.packets_list) == 0: # no packet is received within this time interval
             return -1
         for i in range(len(self.packets_list)):
-            if self.packets_list[i].payload_type == 126:
+            # if self.packets_list[i].payload_type == 126:
+            if self.packets_list[i].payload_type == 125:
                 if not flag:
                     min_sequence_number = self.packets_list[i].sequence_number
                     max_sequence_number = self.packets_list[i].sequence_number
@@ -486,8 +489,9 @@ class Estimator(object):
         self.smoothed_delay_list = collections.deque([])
 
         self.state = 'Hold'
-        self.last_bandwidth_estimation = 20 * 1000
+        # self.last_bandwidth_estimation = 20 * 1000
         # self.last_bandwidth_estimation = 900 * 1000
+        self.last_bandwidth_estimation = 300 * 1000
         self.avg_max_bitrate_kbps_ = -1
         self.var_max_bitrate_kbps_ = -1
         self.rate_control_region_ = "kRcMaxUnknown"
@@ -519,8 +523,9 @@ class Estimator(object):
         self.smoothed_delay_list = collections.deque([])
 
         self.state = 'Hold'
-        self.last_bandwidth_estimation = 20 * 1000
+        # self.last_bandwidth_estimation = 20 * 1000
         # self.last_bandwidth_estimation = 900 * 1000
+        self.last_bandwidth_estimation = 300 * 1000
         self.avg_max_bitrate_kbps_ = -1
         self.var_max_bitrate_kbps_ = -1
         self.rate_control_region_ = "kRcMaxUnknown"
@@ -640,8 +645,8 @@ class Estimator(object):
         '''
         BWE_by_delay, flag = self.get_estimated_bandwidth_by_delay()
         BWE_by_loss = self.get_estimated_bandwidth_by_loss()
-        # bandwidth_estimation = min(BWE_by_delay, BWE_by_loss)
-        bandwidth_estimation = BWE_by_delay
+        bandwidth_estimation = min(BWE_by_delay, BWE_by_loss)
+        # bandwidth_estimation = BWE_by_delay
         # bandwidth_estimation = BWE_by_loss
         if flag == True:
             self.packets_list = []
@@ -737,7 +742,8 @@ class Estimator(object):
         if len(self.packets_list) == 0: # no packet is received within this time interval
             return -1
         for i in range(len(self.packets_list)):
-            if self.packets_list[i].payload_type == 126:
+            # if self.packets_list[i].payload_type == 126:
+            if self.packets_list[i].payload_type == 125:
                 if not flag:
                     min_sequence_number = self.packets_list[i].sequence_number
                     max_sequence_number = self.packets_list[i].sequence_number
