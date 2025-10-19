@@ -140,7 +140,7 @@ class Estimator(object):
         packet_info.header_length = stats["header_length"]
         packet_info.payload_size = stats["payload_size"]
         packet_info.size = packet_info.header_length + packet_info.payload_size + packet_info.padding_length
-        packet_info.bandwidth_prediction = self.bandwidth_prediction
+        packet_info.bandwidth_prediction = int(self.bandwidth_prediction)
 
         self.packet_record.on_receive(packet_info)
         self.heuristic_estimator.report_states(stats)
