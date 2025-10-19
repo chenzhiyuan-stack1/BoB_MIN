@@ -640,7 +640,8 @@ class Estimator(object):
         '''
         BWE_by_delay, flag = self.get_estimated_bandwidth_by_delay()
         BWE_by_loss = self.get_estimated_bandwidth_by_loss()
-        bandwidth_estimation = min(BWE_by_delay, BWE_by_loss)
+        # bandwidth_estimation = min(BWE_by_delay, BWE_by_loss)
+        bandwidth_estimation = BWE_by_delay
         if flag == True:
             self.packets_list = []
         self.last_bandwidth_estimation = bandwidth_estimation
