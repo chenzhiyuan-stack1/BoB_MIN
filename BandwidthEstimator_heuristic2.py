@@ -28,7 +28,8 @@ class HeuristicEstimator(object):
         self.smoothed_delay_list = collections.deque([])
 
         self.state = 'Hold'
-        self.last_bandwidth_estimation = 20 * 1000
+        # self.last_bandwidth_estimation = 20 * 1000
+        self.last_bandwidth_estimation = 900 * 1000
         self.avg_max_bitrate_kbps_ = -1
         self.var_max_bitrate_kbps_ = -1
         self.rate_control_region_ = "kRcMaxUnknown"
@@ -56,7 +57,8 @@ class HeuristicEstimator(object):
         self.smoothed_delay_list = collections.deque([])
 
         self.state = 'Hold'
-        self.last_bandwidth_estimation = 20 * 1000
+        # self.last_bandwidth_estimation = 20 * 1000
+        self.last_bandwidth_estimation = 900 * 1000
         self.avg_max_bitrate_kbps_ = -1
         self.var_max_bitrate_kbps_ = -1
         self.rate_control_region_ = "kRcMaxUnknown"
@@ -484,7 +486,8 @@ class Estimator(object):
         self.smoothed_delay_list = collections.deque([])
 
         self.state = 'Hold'
-        self.last_bandwidth_estimation = 20 * 1000
+        # self.last_bandwidth_estimation = 20 * 1000
+        self.last_bandwidth_estimation = 900 * 1000
         self.avg_max_bitrate_kbps_ = -1
         self.var_max_bitrate_kbps_ = -1
         self.rate_control_region_ = "kRcMaxUnknown"
@@ -516,7 +519,8 @@ class Estimator(object):
         self.smoothed_delay_list = collections.deque([])
 
         self.state = 'Hold'
-        self.last_bandwidth_estimation = 20 * 1000
+        # self.last_bandwidth_estimation = 20 * 1000
+        self.last_bandwidth_estimation = 900 * 1000
         self.avg_max_bitrate_kbps_ = -1
         self.var_max_bitrate_kbps_ = -1
         self.rate_control_region_ = "kRcMaxUnknown"
