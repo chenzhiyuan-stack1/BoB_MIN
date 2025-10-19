@@ -116,8 +116,8 @@ runTestsOnModel() {
 }
 
 test_model_list=(
-  bob1
-  # heuristic2
+  # bob1
+  heuristic2
 )
 
 # 新增视频列表及参数
