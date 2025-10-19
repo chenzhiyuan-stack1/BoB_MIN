@@ -123,9 +123,9 @@ test_model_list=(
 # 新增视频列表及参数
 declare -A video_params
 video_list=(
-  test
+  # test
   # akiyo_qcif
-  # bowing_cif
+  bowing_cif
   # bus_cif
   # carphone_cif
   # claire_qcif
@@ -143,7 +143,7 @@ video_params[coastguard_qcif]="testmedia/coastguard_qcif.yuv 144 176 30"
 video_params[container_qcif]="testmedia/container_qcif.yuv 144 176 30"
 
 audio_list=(
-  test
+  # test
   test_30
 )
 # 例如：audio_params[音频名]="path"

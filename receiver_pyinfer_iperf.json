@@ -1,6 +1,6 @@
 {
   "serverless_connection": {
-    "autoclose": 120,
+    "autoclose": 240,
     "sender": {
       "enabled": false
     },
