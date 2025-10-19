@@ -1,0 +1,48 @@
+{
+    "serverless_connection": {
+        "autoclose": 40,
+        "sender": {
+            "enabled": true,
+            "dest_ip": "202.120.36.33",
+            "dest_port": 8001
+        },
+        "receiver": {
+            "enabled": false
+        }
+    },
+    "bwe_feedback_duration": 200,
+    "video_source": {
+        "video_disabled": {
+            "enabled": false
+        },
+        "webcam": {
+            "enabled": false
+        },
+        "video_file": {
+            "enabled": true,
+            "height": 240,
+            "width": 320,
+            "fps": 10,
+            "file_path": "testmedia/test.yuv"
+        }
+    },
+    "audio_source": {
+        "audio_disabled": {
+            "enabled": false
+        },
+        "microphone": {
+            "enabled": false
+        },
+        "audio_file": {
+            "enabled": true,
+            "file_path": "testmedia/test.wav"
+        }
+    },
+    "save_to_file": {
+        "enabled": false
+    },
+    "logging": {
+        "enabled": true,
+        "log_output_path": "webrtc.log"
+    }
+}

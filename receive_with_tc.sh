@@ -28,7 +28,7 @@ tc_profiles=(
   # twitch_profile_x0.25
   # FCCamazone_x0.25
   # Synthtic_x0.25
-  test
+  test2
 )
 
 # 随机选video和audio，并远程启动发送端
@@ -60,13 +60,13 @@ runTestsOnModel() {
   MODEL="${MODELDIR}/${modelName}.pth"
   echo $MODEL >active_model
 
-  # 修改 receiver_pyinfer.json 的 save_to_file.video 配置
+  # 修改 receiver_pyinfer_tc.json 的 save_to_file.video 配置
   echo "Configuring receiver for video width: $width, height: $height, fps: $fps"
   jq --argjson width $width --argjson height $height --argjson fps $fps \
     '.save_to_file.video.width=$width
      | .save_to_file.video.height=$height
      | .save_to_file.video.fps=$fps' \
-    receiver_pyinfer.json > receiver_pyinfer_tmp.json && mv receiver_pyinfer_tmp.json receiver_pyinfer_online.json
+    receiver_pyinfer_tc.json > receiver_pyinfer_tmp.json && mv receiver_pyinfer_tmp.json receiver_pyinfer_online.json
 
   # 启动接收端
   echo "Starting receiver..."
@@ -80,7 +80,7 @@ runTestsOnModel() {
   fi
 
   # 远程登录并启动发送端，传递所有参数（多加一个 resultsDir）
-  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send.sh ${modelName} \"$video_path\" $height $width $fps \"$audio_path\""
+  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send_tc.sh ${modelName} \"$video_path\" $height $width $fps \"$audio_path\""
 
   # 等待连接建立，最多等待30秒
   for k in {1..30}; do

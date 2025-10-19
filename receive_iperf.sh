@@ -124,13 +124,13 @@ test_model_list=(
 declare -A video_params
 video_list=(
   test
-  akiyo_qcif
-  bowing_cif
-  bus_cif
-  carphone_cif
-  claire_qcif
-  coastguard_qcif
-  container_qcif
+  # akiyo_qcif
+  # bowing_cif
+  # bus_cif
+  # carphone_cif
+  # claire_qcif
+  # coastguard_qcif
+  # container_qcif
 )
 # 例如：video_params[视频名]="path height width fps"
 video_params[test]="testmedia/test.yuv 240 320 10"
