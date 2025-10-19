@@ -198,7 +198,7 @@ class Estimator(object):
 
         # 2. 动作
         action = {
-            "bandwidth_estimation": bandwidth_estimation
+            "bandwidth_estimation": int(bandwidth_estimation)
         }
 
         # # 3. 音视频信息
