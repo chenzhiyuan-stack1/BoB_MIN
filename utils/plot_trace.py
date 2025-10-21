@@ -112,9 +112,18 @@ if __name__ == '__main__':
             plot_trace(data_file, folder_path)
 
     print("遍历完成！")
-    print(f"总共 {total_folders} 段 trace，其中网络很差（无 data.jsonl）的有 {len(bad_network_folders)} 段：")
+    print(f"总共 {total_folders} 段 trace，其中网络很差（无 data.jsonl）的有 {len(bad_network_folders)} 段。")
+
+    # 统计每个时间段网络很差的数量
+    time_count = {}
     for folder in bad_network_folders:
-        print(f"  {folder}")
+        time_str = folder[:14]  # 取前14位作为时间
+        time_count[time_str] = time_count.get(time_str, 0) + 1
+
+    print("网络很差的时间段统计：")
+    for time_str, count in sorted(time_count.items()):
+        print(f"  时间段 {time_str} 网络很差的trace数量：{count}")
+
     if total_folders > 0:
         ratio = valid_folders / total_folders
         print(f"有 data.jsonl 的段占比：{valid_folders}/{total_folders} = {ratio:.2%}")
