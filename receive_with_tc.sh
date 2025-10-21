@@ -2,7 +2,7 @@
 date=$(date '+%d_%m_%Y_%H%M')
 testid=$1
 MODELDIR="./model"
-RESULTDIR="./results/${testid}/${date}"
+RESULTDIR="./results/${testid}/"
 DATA_LOGFILE="data.jsonl"
 rm -rf ${DATA_LOGFILE}
 
@@ -186,7 +186,8 @@ for i in {1..5}
 do
   for model in "${test_model_list[@]}"
   do
-    modelResultDir=${RESULTDIR}_${model}_${i}
+    cur_time=$(date '+%Y%m%d%H%M%S')
+    modelResultDir=${RESULTDIR}${cur_time}_${model}_${i}
     echo "Running tests for model: $model, iteration: $i"
     # 清理旧的结果目录
     rm -rf $modelResultDir
