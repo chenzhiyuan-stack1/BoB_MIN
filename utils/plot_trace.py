@@ -91,8 +91,32 @@ if __name__ == '__main__':
         sys.exit(1)
     id = sys.argv[1]
     input_path = 'results/' + id
+
+    total_folders = 0
+    valid_folders = 0
+    bad_network_folders = []
+
     for folder in os.listdir(input_path):
         folder_path = os.path.join(input_path, folder)
         data_file = os.path.join(folder_path, 'data.jsonl')
-        if os.path.isfile(data_file):
+        plot_file = os.path.join(folder_path, 'trace_plot.png')
+        total_folders += 1
+
+        if not os.path.isfile(data_file):
+            bad_network_folders.append(folder)
+            continue  # 没有data.jsonl，直接跳过画图
+        else:
+            valid_folders += 1
+            if os.path.isfile(plot_file):
+                continue  # 已有图片，跳过画图
             plot_trace(data_file, folder_path)
+
+    print("遍历完成！")
+    print(f"总共 {total_folders} 段 trace，其中网络很差（无 data.jsonl）的有 {len(bad_network_folders)} 段：")
+    for folder in bad_network_folders:
+        print(f"  {folder}")
+    if total_folders > 0:
+        ratio = valid_folders / total_folders
+        print(f"有 data.jsonl 的段占比：{valid_folders}/{total_folders} = {ratio:.2%}")
+    else:
+        print("没有可用的 trace 段。")
