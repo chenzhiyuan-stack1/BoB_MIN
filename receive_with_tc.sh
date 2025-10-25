@@ -35,7 +35,7 @@ tc_profiles=(
   satellite
   WIFI
   low
-  medium
+  # medium
 )
 
 # 随机选video和audio，并远程启动发送端
