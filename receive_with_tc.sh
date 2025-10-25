@@ -29,11 +29,13 @@ tc_profiles=(
   # FCCamazone_x0.25
   # Synthtic_x0.25
   # test2
-  4G
+  # 4G
   bad
   bad4G
   satellite
   WIFI
+  low
+  medium
 )
 
 # 随机选video和audio，并远程启动发送端
@@ -88,7 +90,7 @@ runTestsOnModel() {
   ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send_tc.sh ${modelName} \"$video_path\" $height $width $fps \"$audio_path\""
 
   # 等待连接建立，最多等待30秒
-  for k in {1..30}; do
+  for k in {1..200}; do
     if check_connection; then
       echo "连接已建立"
       start_time=$(date +%s)
