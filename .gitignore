@@ -36,4 +36,4 @@ result*/
 
 # raw_media
 /raw_media/*
-/testmedia/output_3840x2160_60fps.yuv
+/testmedia/output_1920x1080_30fps.yuv

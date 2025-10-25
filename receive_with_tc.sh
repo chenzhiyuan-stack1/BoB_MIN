@@ -28,7 +28,12 @@ tc_profiles=(
   # twitch_profile_x0.25
   # FCCamazone_x0.25
   # Synthtic_x0.25
-  test2
+  # test2
+  4G
+  bad
+  bad4G
+  satellite
+  WIFI
 )
 
 # 随机选video和audio，并远程启动发送端

@@ -125,13 +125,13 @@ declare -A video_params
 video_list=(
   # test
   # akiyo_qcif
-  # bowing_cif
+  bowing_cif
   # bus_cif
   # carphone_cif
   # claire_qcif
   # coastguard_qcif
   # container_qcif
-  bunny
+  # bunny
 )
 # 例如：video_params[视频名]="path height width fps"
 video_params[test]="testmedia/test.yuv 240 320 10"
@@ -142,7 +142,7 @@ video_params[carphone_cif]="testmedia/carphone_cif.yuv 288 352 30"
 video_params[claire_qcif]="testmedia/claire_qcif.yuv 144 176 30"
 video_params[coastguard_qcif]="testmedia/coastguard_qcif.yuv 144 176 30"
 video_params[container_qcif]="testmedia/container_qcif.yuv 144 176 30"
-video_params[bunny]="testmedia/output_3840x2160_60fps.yuv 2160 3840 60"
+video_params[bunny]="testmedia/output_1920x1080_30fps.yuv 1080 1920 30"
 
 audio_list=(
   # test

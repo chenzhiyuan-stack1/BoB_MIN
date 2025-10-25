@@ -1,0 +1,12 @@
+rate 1000kbit
+delay 300ms
+loss 1%
+wait 20s
+rate 800kbit
+delay 350ms
+loss 2%
+wait 20s
+rate 1200kbit
+delay 300ms
+loss 1%
+wait 20s
