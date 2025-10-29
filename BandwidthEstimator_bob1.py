@@ -8,7 +8,7 @@ from utils.packet_record import PacketRecord
 from deep_rl.ppo_AC import Actor
 from deep_rl.ppo_AC import Critic
 from collections import deque
-from BandwidthEstimator_heuristic import HeuristicEstimator
+from BandwidthEstimator_heuristic2 import HeuristicEstimator
 import logging
 
 import json

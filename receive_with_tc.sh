@@ -30,10 +30,10 @@ tc_profiles=(
   # Synthtic_x0.25
   # test2
   # 4G
-  bad
-  bad4G
-  satellite
-  WIFI
+  # bad
+  # bad4G
+  # satellite
+  # WIFI
   low
   # medium
 )
@@ -146,16 +146,16 @@ runTestsOnModel() {
   done
 
   # 收集结果文件
-  mv outvideo.yuv ${resultsDir}/outputvideo_${modelName}_${video}_${audio}_${tc_profile}.yuv
-  mv outaudio.wav ${resultsDir}/outaudio_${modelName}_${video}_${audio}_${tc_profile}.wav
+  # mv outvideo.yuv ${resultsDir}/outputvideo_${modelName}_${video}_${audio}_${tc_profile}.yuv
+  # mv outaudio.wav ${resultsDir}/outaudio_${modelName}_${video}_${audio}_${tc_profile}.wav
   mv webrtc.log ${resultsDir}/webrtc_receive_${modelName}_${video}_${audio}_${tc_profile}.log
   # 远程收集发送端日志
   ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && rm -rf ${resultsDir} && mkdir -p ${resultsDir} && mv webrtc.log ${resultsDir}/webrtc_send_${modelName}_${video}_${audio}_${tc_profile}.log"
 }
 
 test_model_list=(
-  # bob1
-  heuristic2
+  bob1
+  # heuristic2
 )
 
 # 新增视频列表及参数
@@ -189,7 +189,7 @@ declare -A audio_params
 audio_params[test]="testmedia/test.wav"
 audio_params[test_30]="testmedia/test_30.wav"
 
-for i in {1..250}
+for i in {1..1000}
 do
   for model in "${test_model_list[@]}"
   do
