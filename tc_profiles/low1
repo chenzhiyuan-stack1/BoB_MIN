@@ -1,0 +1,4 @@
+rate 1500kbit
+wait 59s
+rate 1000kbit
+wait 59s

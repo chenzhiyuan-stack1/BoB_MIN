@@ -34,7 +34,8 @@ tc_profiles=(
   # bad4G
   # satellite
   # WIFI
-  low
+  # low
+  low1
   # medium
 )
 
