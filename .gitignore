@@ -37,3 +37,6 @@ result*/
 # raw_media
 /raw_media/*
 /testmedia/output_1920x1080_30fps.yuv
+
+# dataset
+*.pickle
