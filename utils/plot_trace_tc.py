@@ -221,13 +221,32 @@ def plot_trace(data_file, save_dir):
             commands = parse_tc_profile(profile_path)
             if commands:
                 tc_times, tc_rates, tc_losses, tc_delays = get_tc_params_over_time(commands, total_duration)
+                # --- 关键修改：截断TC数据以匹配 receiving_rates 的时间轴 ---
                 if tc_times:
-                    # 在子图1中添加TC带宽
-                    fig.add_trace(go.Scatter(x=tc_times, y=np.array(tc_rates) / 1e6, name='TC Rate', mode='lines', line=dict(color='green', width=2.5, dash='dot', shape='hv')), row=1, col=1)
-                    # 子图4: TC丢包率
-                    fig.add_trace(go.Scatter(x=tc_times, y=tc_losses, name='TC Loss', mode='lines', line=dict(color='red', width=2.5, dash='dot', shape='hv')), row=4, col=1)
-                    # 子图5: TC延迟
-                    fig.add_trace(go.Scatter(x=tc_times, y=tc_delays, name='TC Delay', mode='lines', line=dict(color='saddlebrown', width=2.5, dash='dot', shape='hv')), row=5, col=1)
+                    # 找到第一个超出 total_duration 的时间点索引
+                    truncate_idx = len(tc_times)
+                    for i, t in enumerate(tc_times):
+                        if t > total_duration:
+                            truncate_idx = i
+                            break
+                    
+                    # 截断所有TC数据数组
+                    tc_times_truncated = tc_times[:truncate_idx]
+                    tc_rates_truncated = tc_rates[:truncate_idx]
+                    tc_losses_truncated = tc_losses[:truncate_idx]
+                    tc_delays_truncated = tc_delays[:truncate_idx]
+
+                    # 确保最后一点与 total_duration 对齐
+                    if tc_times_truncated and tc_times_truncated[-1] < total_duration:
+                        tc_times_truncated.append(total_duration)
+                        tc_rates_truncated.append(tc_rates_truncated[-1])
+                        tc_losses_truncated.append(tc_losses_truncated[-1])
+                        tc_delays_truncated.append(tc_delays_truncated[-1])
+
+                    # 使用截断后的数据绘图
+                    fig.add_trace(go.Scatter(x=tc_times_truncated, y=np.array(tc_rates_truncated) / 1e6, name='TC Rate', mode='lines', line=dict(color='green', width=2.5, dash='dot', shape='hv')), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=tc_times_truncated, y=tc_losses_truncated, name='TC Loss', mode='lines', line=dict(color='red', width=2.5, dash='dot', shape='hv')), row=4, col=1)
+                    fig.add_trace(go.Scatter(x=tc_times_truncated, y=tc_delays_truncated, name='TC Delay', mode='lines', line=dict(color='saddlebrown', width=2.5, dash='dot', shape='hv')), row=5, col=1)
 
     # 更新图表布局
     fig.update_layout(
