@@ -47,7 +47,7 @@ import numpy as np
 import sys
 import re
 
-# 导入新的绘图库
+# 导入绘图库
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -57,28 +57,31 @@ TC_PROFILE_DIR = '/home/min414/data2/BoB_MIN/tc_profiles'
 
 def parse_unit(value_str):
     """解析带有单位的字符串，如 '1600kbit', '10s', '250ms'"""
-    value_str = value_str.lower().strip()
+    value_str = str(value_str).lower().strip()
     if 'kbit' in value_str:
         return float(value_str.replace('kbit', '')) * 1000
     if 'mbit' in value_str:
         return float(value_str.replace('mbit', '')) * 1000000
-    if 's' in value_str:
-        return float(value_str.replace('s', ''))
     if 'ms' in value_str:
         return float(value_str.replace('ms', '')) / 1000
+    if 's' in value_str:
+        return float(value_str.replace('s', ''))
+    if '%' in value_str:
+        return float(value_str.replace('%', '')) / 100.0
     try:
         return float(value_str)
     except (ValueError, TypeError):
         return 0.0
 
 def parse_tc_profile(profile_path):
-    """解析tc profile文件"""
+    """解析tc profile文件，提取rate, loss, delay, 和 duration"""
     if not os.path.exists(profile_path):
         print(f"  [Warning] TC profile not found: {profile_path}")
         return None
     with open(profile_path, 'r') as f:
         lines = [line.strip() for line in f if line.strip() and not line.startswith('#')]
     if not lines: return []
+    
     commands = []
     rate_groups = []
     current_group = []
@@ -89,38 +92,71 @@ def parse_tc_profile(profile_path):
         else:
             current_group.append(line)
     if current_group: rate_groups.append(current_group)
+
     for group in rate_groups:
-        rate = parse_unit(group[0].split()[1])
-        duration = sum(parse_unit(cmd.split()[1]) for cmd in group if cmd.startswith('wait'))
-        commands.append({'rate': rate, 'duration': duration})
+        # 默认值
+        params = {'rate': 0, 'loss': 0, 'delay': 0, 'duration': 0}
+        
+        for cmd in group:
+            parts = cmd.split()
+            if len(parts) < 2: continue
+            
+            cmd_type = parts[0]
+            cmd_value = parts[1]
+
+            if cmd_type == 'rate':
+                params['rate'] = parse_unit(cmd_value)
+            elif cmd_type == 'loss':
+                params['loss'] = parse_unit(cmd_value)
+            elif cmd_type == 'delay':
+                params['delay'] = parse_unit(cmd_value)
+            elif cmd_type == 'wait':
+                params['duration'] += parse_unit(cmd_value)
+        
+        commands.append(params)
     return commands
 
-def get_tc_rate_over_time(commands, total_duration):
-    """根据解析的指令和总时长，生成循环的TC时间和速率序列"""
-    if not commands: return [], []
-    times = [0]
-    rates = [commands[0]['rate']]
+def get_tc_params_over_time(commands, total_duration):
+    """根据解析的指令和总时长，生成循环的TC参数（rate, loss, delay）序列"""
+    if not commands: return [], [], [], []
+    
+    times, rates, losses, delays = [0], [commands[0]['rate']], [commands[0]['loss']], [commands[0]['delay']]
     current_time = 0
     cmd_idx = 0
     total_cycle_duration = sum(cmd['duration'] for cmd in commands)
-    if total_cycle_duration <= 0: return [0, total_duration], [rates[0], rates[0]]
+    if total_cycle_duration <= 0: 
+        return [0, total_duration], [rates[0], rates[0]], [losses[0], losses[0]], [delays[0], delays[0]]
+
     while current_time < total_duration:
         command = commands[cmd_idx % len(commands)]
-        duration = command['duration']
-        current_rate = command['rate']
+        
         if current_time > 0:
             times.append(current_time)
             rates.append(rates[-1])
+            losses.append(losses[-1])
+            delays.append(delays[-1])
+            
         times.append(current_time)
-        rates.append(current_rate)
-        current_time += duration
+        rates.append(command['rate'])
+        losses.append(command['loss'])
+        delays.append(command['delay'])
+        
+        current_time += command['duration']
+        
         times.append(current_time)
-        rates.append(current_rate)
+        rates.append(command['rate'])
+        losses.append(command['loss'])
+        delays.append(command['delay'])
+        
         cmd_idx += 1
+        
     if times[-1] < total_duration:
         times.append(total_duration)
         rates.append(rates[-1])
-    return times, rates
+        losses.append(losses[-1])
+        delays.append(delays[-1])
+        
+    return times, rates, losses, delays
 
 def get_tc_profile_name(folder_path):
     """从文件夹中的log文件名提取tc_profile_name"""
@@ -132,7 +168,7 @@ def get_tc_profile_name(folder_path):
     return None
 
 def plot_trace(data_file, save_dir):
-    """使用 Plotly 读取data.jsonl并生成三合一的性能图"""
+    """使用 Plotly 读取data.jsonl并生成五合一的性能图"""
     times, receiving_rates, bandwidth_estimations, packet_loss_ratios, delay_avg_min_diffs = [], [], [], [], []
 
     def to_numeric(value):
@@ -140,11 +176,10 @@ def plot_trace(data_file, save_dir):
         return 0.0
 
     with open(data_file, 'r') as f:
-        for line_num, line in enumerate(f, 1):
+        for line in f:
             try:
                 d = json.loads(line)
-                state = d.get('state', {})
-                action = d.get('action', {})
+                state = d.get('state', {}); action = d.get('action', {})
                 receive_times = state.get('receive_time')
                 if not receive_times or not isinstance(receive_times, list): continue
                 times.append(receive_times[-1])
@@ -152,13 +187,10 @@ def plot_trace(data_file, save_dir):
                 bandwidth_estimations.append(to_numeric(action.get('bandwidth_estimation')))
                 packet_loss_ratios.append(to_numeric(state.get('packet_loss_ratio')))
                 delay_avg_min_diffs.append(to_numeric(state.get('delay_avg_min_diff')))
-            except (json.JSONDecodeError, KeyError, IndexError) as e:
-                print(f"  Skipping malformed line #{line_num} in {data_file}: {e}")
-                continue
+            except (json.JSONDecodeError, KeyError, IndexError): continue
 
     if not times:
-        print(f"  No valid data points found in {data_file}")
-        return
+        print(f"  No valid data points found in {data_file}"); return
 
     base_time = times[0]
     times_sec = [(t - base_time) / 1000.0 for t in times]
@@ -166,15 +198,21 @@ def plot_trace(data_file, save_dir):
 
     # --- Plotly 绘图逻辑 ---
     fig = make_subplots(
-        rows=3, cols=1,
+        rows=5, cols=1,
         shared_xaxes=True,
-        vertical_spacing=0.05,
-        subplot_titles=('Bandwidth', 'Packet Loss', 'Queuing Delay')
+        vertical_spacing=0.03,
+        subplot_titles=('Bandwidth', 'Packet Loss (End-to-End)', 'Queuing Delay (End-to-End)', 'TC Loss (Ground Truth)', 'TC Delay (Ground Truth)')
     )
 
     # 子图1: 带宽
     fig.add_trace(go.Scatter(x=times_sec, y=np.array(receiving_rates) / 1e6, name='Receiving Rate', mode='lines', line=dict(color='dodgerblue', width=2)), row=1, col=1)
     fig.add_trace(go.Scatter(x=times_sec, y=np.array(bandwidth_estimations) / 1e6, name='Bandwidth Estimation', mode='lines', line=dict(color='darkorange', width=2, dash='dash')), row=1, col=1)
+
+    # 子图2: 端到端丢包率
+    fig.add_trace(go.Scatter(x=times_sec, y=packet_loss_ratios, name='E2E Packet Loss Ratio', mode='lines', line=dict(color='crimson', width=2)), row=2, col=1)
+
+    # 子图3: 端到端延迟
+    fig.add_trace(go.Scatter(x=times_sec, y=delay_avg_min_diffs, name='E2E Delay Avg Min Diff', mode='lines', line=dict(color='purple', width=2)), row=3, col=1)
 
     if TC:
         tc_profile_name = get_tc_profile_name(save_dir)
@@ -182,33 +220,40 @@ def plot_trace(data_file, save_dir):
             profile_path = os.path.join(TC_PROFILE_DIR, tc_profile_name)
             commands = parse_tc_profile(profile_path)
             if commands:
-                tc_times, tc_rates = get_tc_rate_over_time(commands, total_duration)
-                if tc_times and tc_rates:
-                    fig.add_trace(go.Scatter(x=tc_times, y=np.array(tc_rates) / 1e6, name='TC Rate (Ground Truth)', mode='lines', line=dict(color='green', width=2.5, dash='dot', shape='hv')), row=1, col=1)
-
-    # 子图2: 丢包率
-    fig.add_trace(go.Scatter(x=times_sec, y=packet_loss_ratios, name='Packet Loss Ratio', mode='lines', line=dict(color='crimson', width=2)), row=2, col=1)
-
-    # 子图3: 延迟
-    fig.add_trace(go.Scatter(x=times_sec, y=delay_avg_min_diffs, name='Delay Avg Min Diff', mode='lines', line=dict(color='purple', width=2)), row=3, col=1)
+                tc_times, tc_rates, tc_losses, tc_delays = get_tc_params_over_time(commands, total_duration)
+                if tc_times:
+                    # 在子图1中添加TC带宽
+                    fig.add_trace(go.Scatter(x=tc_times, y=np.array(tc_rates) / 1e6, name='TC Rate', mode='lines', line=dict(color='green', width=2.5, dash='dot', shape='hv')), row=1, col=1)
+                    # 子图4: TC丢包率
+                    fig.add_trace(go.Scatter(x=tc_times, y=tc_losses, name='TC Loss', mode='lines', line=dict(color='red', width=2.5, dash='dot', shape='hv')), row=4, col=1)
+                    # 子图5: TC延迟
+                    fig.add_trace(go.Scatter(x=tc_times, y=tc_delays, name='TC Delay', mode='lines', line=dict(color='saddlebrown', width=2.5, dash='dot', shape='hv')), row=5, col=1)
 
     # 更新图表布局
     fig.update_layout(
         title_text=f"Trace Analysis: {os.path.basename(save_dir)}",
-        height=800,
+        height=1200,
         legend_traceorder="reversed",
         template="plotly_white"
     )
-    # 更新Y轴标签
-    fig.update_yaxes(title_text="Rate (Mbps)", range=[0, None], row=1, col=1)
-    fig.update_yaxes(title_text="Packet Loss Ratio", range=[-0.05, 1.05], row=2, col=1)
-    fig.update_yaxes(title_text="Delay (ms)", range=[0, None], row=3, col=1)
+    # 通过不设置 'range' 参数，Plotly会自动调整范围
+    fig.update_yaxes(title_text="Rate (Mbps)", autorange=True, row=1, col=1)
+    fig.update_yaxes(title_text="Loss Ratio", autorange=True, row=2, col=1)
+    fig.update_yaxes(title_text="Delay (ms)", autorange=True, row=3, col=1)
+    fig.update_yaxes(title_text="TC Loss Ratio", autorange=True, row=4, col=1)
+    fig.update_yaxes(title_text="TC Delay (ms)", autorange=True, row=5, col=1)
+
+    # 强制从0开始的坐标轴看起来更直观
+    fig.update_yaxes(rangemode="tozero", row=1, col=1) # 带宽
+    fig.update_yaxes(rangemode="tozero", row=3, col=1) # 延迟
+    fig.update_yaxes(rangemode="tozero", row=5, col=1) # TC延迟
+
     # 更新X轴标签
-    fig.update_xaxes(title_text="Time (s)", row=3, col=1)
+    fig.update_xaxes(title_text="Time (s)", row=5, col=1)
 
     # 保存为静态图片
     plot_file = os.path.join(save_dir, 'trace_plot.png')
-    fig.write_image(plot_file, width=1600, height=900, scale=1)
+    fig.write_image(plot_file, width=1600, height=1200, scale=1)
     print(f"  Plot saved to {os.path.basename(plot_file)}")
 
 
@@ -225,16 +270,14 @@ if __name__ == '__main__':
         sys.exit(1)
 
     all_folders = sorted([f for f in os.listdir(input_path) if os.path.isdir(os.path.join(input_path, f))])
-    total_folders = len(all_folders)
-    processed_count = 0
-
+    
     print(f"--- Starting to process ID: {test_id} ---")
     for i, folder in enumerate(all_folders):
         folder_path = os.path.join(input_path, folder)
         data_file = os.path.join(folder_path, 'data.jsonl')
         plot_file = os.path.join(folder_path, 'trace_plot.png')
         
-        print(f"[{i+1}/{total_folders}] Processing folder: {folder}")
+        print(f"[{i+1}/{len(all_folders)}] Processing folder: {folder}")
 
         if not os.path.isfile(data_file):
             print("  Skipping: data.jsonl not found.")
@@ -244,16 +287,10 @@ if __name__ == '__main__':
             print("  Skipping: Plot already exists.")
             continue
         
-        # try:
-        #     plot_trace(data_file, folder_path)
-        #     processed_count += 1
-        # except Exception as e:
-        #     print(f"  [ERROR] Failed to plot for {folder}: {e}")
-        plot_trace(data_file, folder_path)
-        processed_count += 1
+        try:
+            plot_trace(data_file, folder_path)
+        except Exception as e:
+            print(f"  [ERROR] Failed to plot for {folder}: {e}")
 
-    print("\n--- Summary ---")
-    print(f"Total trace folders found: {total_folders}")
-    print(f"Successfully generated new plots: {processed_count}")
-    print(f"Skipped (no data or plot exists): {total_folders - processed_count}")
     print("--- Done ---")
+    
