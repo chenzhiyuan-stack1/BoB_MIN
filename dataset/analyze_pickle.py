@@ -8,7 +8,8 @@ import numpy as np
 #   - rewards: (6534914,)
 #   - terminals: (6534914,)
 
-pickle_path = "/home/min414/data1/Schaferct/training_dataset_pickle/v8.pickle"
+# pickle_path = "/home/min414/data1/Schaferct/training_dataset_pickle/v8.pickle"
+pickle_path = 'BoB_012.pickle'
 with open(pickle_path, 'rb') as f:
     data = pickle.load(f)
 
@@ -22,3 +23,5 @@ for key, value in data.items():
         print(f"  - {key}: {np_array.shape}")
     except Exception as e:
         print(f"  - {key}: Could not convert to numpy array. Type: {type(value)}, Error: {e}")
+        
+# print(data["observations"][1][44])  # 打印第一个观测值以进行检查

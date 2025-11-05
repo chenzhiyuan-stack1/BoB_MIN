@@ -73,12 +73,12 @@
 
 # 再写个函数，把上面的字典保存成pickle文件
 
-
 import os
 import json
 import numpy as np
 import pickle
 from collections import deque
+from tqdm import tqdm
 
 # --- TC Profile 解析函数 (从 plot_trace_tc.py 迁移并适配) ---
 TC_PROFILE_DIR = '/home/min414/data2/BoB_MIN/tc_profiles'
@@ -104,7 +104,7 @@ def parse_unit(value_str):
 def parse_tc_profile(profile_path):
     """解析tc profile文件，提取rate, loss, delay, 和 duration"""
     if not os.path.exists(profile_path):
-        print(f"  [Warning] TC profile not found: {profile_path}")
+        # print(f"  [Warning] TC profile not found: {profile_path}") # 在tqdm中打印会扰乱进度条
         return None
     with open(profile_path, 'r') as f:
         lines = [line.strip() for line in f if line.strip() and not line.startswith('#')]
@@ -152,7 +152,6 @@ def get_tc_params_at_time(commands, time_ms):
             return cmd['rate'], cmd['loss'], cmd['delay']
         elapsed_time += cmd['duration']
     
-    # 理论上不会到达这里，但作为保障返回最后一个命令的参数
     last_cmd = commands[-1]
     return last_cmd['rate'], last_cmd['loss'], last_cmd['delay']
 
@@ -184,33 +183,31 @@ def process_results_to_dataset(basedir, ids, state_window_size=6):
     state_dim = len(state_keys)
     zero_state_t = [0.0] * state_dim
 
-    for id_val in ids:
+    # 使用tqdm包裹外层循环，展示ID处理进度
+    for id_val in tqdm(ids, desc="Processing IDs"):
         id_path = os.path.join(basedir, str(id_val))
         if not os.path.isdir(id_path):
-            print(f"Warning: Directory not found for id {id_val}, skipping.")
+            tqdm.write(f"Warning: Directory not found for id {id_val}, skipping.")
             continue
 
         trace_folders = sorted([f for f in os.listdir(id_path) if os.path.isdir(os.path.join(id_path, f))])
         
-        for folder in trace_folders:
+        # 使用tqdm包裹内层循环，展示单个ID内的trace处理进度
+        for folder in tqdm(trace_folders, desc=f"  ID {id_val} Traces", leave=False):
             folder_path = os.path.join(id_path, folder)
             data_file = os.path.join(folder_path, 'data.jsonl')
             
             if not os.path.exists(data_file):
                 continue
 
-            print(f"Processing trace: {folder_path}")
-
-            # 1. 读取并解析TC Profile
             tc_profile_name = get_tc_profile_name(folder_path)
             tc_commands = None
             if tc_profile_name:
                 profile_path = os.path.join(TC_PROFILE_DIR, tc_profile_name)
                 tc_commands = parse_tc_profile(profile_path)
 
-            # 2. 读取所有决策周期数据
             with open(data_file, 'r') as f:
-                lines = f.read().splitlines() # 自动处理末尾空行
+                lines = f.read().splitlines()
             
             if not lines:
                 continue
@@ -218,45 +215,35 @@ def process_results_to_dataset(basedir, ids, state_window_size=6):
             trace_data = [json.loads(line) for line in lines]
             num_steps = len(trace_data)
             
-            # 3. 提取每个时间步的 state_t
             trace_states_t = []
             for step_data in trace_data:
                 state_dict = step_data.get('state', {})
                 state_t = [float(state_dict.get(k, 0.0)) for k in state_keys]
                 trace_states_t.append(state_t)
 
-            # 4. 构建 (obs, action, next_obs, reward, terminal) 对
             state_history = deque([zero_state_t] * state_window_size, maxlen=state_window_size)
 
             for i in range(num_steps):
-                # 更新历史状态并构建 observation
                 state_history.append(trace_states_t[i])
                 observation = np.concatenate(state_history).flatten()
 
-                # 构建 next_observation
                 if i + 1 < num_steps:
-                    # 使用 i+1 时刻的状态历史
                     next_state_history = deque(state_history, maxlen=state_window_size)
                     next_state_history.append(trace_states_t[i+1])
                     next_observation = np.concatenate(next_state_history).flatten()
                 else:
-                    # 到达轨迹末端，next_observation 为 0
                     next_observation = np.zeros_like(observation)
 
-                # 提取 action
                 action = trace_data[i].get('action', {}).get('bandwidth_estimation', 0.0)
                 
-                # 计算 reward
                 state_dict = trace_data[i].get('state', {})
                 queuing_delay = state_dict.get('queuing_delay', 0.0)
                 loss_ratio = state_dict.get('packet_loss_ratio', 0.0)
                 recv_rate = state_dict.get('receiving_rate', 0.0)
                 reward = -(queuing_delay / 100.0 + 5.0 * loss_ratio) + (recv_rate / 1000000.0)
 
-                # 判断 terminal
                 terminal = 1 if (i == num_steps - 1) else 0
 
-                # 获取TC真实值
                 true_capacity, true_loss, true_delay = 0, 0, 0
                 if tc_commands:
                     send_times = state_dict.get('send_time', [])
@@ -264,9 +251,8 @@ def process_results_to_dataset(basedir, ids, state_window_size=6):
                         avg_send_time_ms = np.mean(send_times)
                         true_capacity, true_loss, true_delay = get_tc_params_at_time(tc_commands, avg_send_time_ms)
 
-                # 添加到数据集
                 dataset['observations'].append(observation)
-                dataset['actions'].append([action]) # action 应该是 (1,)
+                dataset['actions'].append([action])
                 dataset['next_observations'].append(next_observation)
                 dataset['rewards'].append(reward)
                 dataset['terminals'].append(terminal)
@@ -274,7 +260,7 @@ def process_results_to_dataset(basedir, ids, state_window_size=6):
                 dataset['true_loss_rates'].append(true_loss)
                 dataset['true_delays'].append(true_delay)
 
-    # 5. 将列表转换为Numpy数组
+    print("\nConverting lists to numpy arrays...")
     for key, value in dataset.items():
         dataset[key] = np.array(value)
         print(f"Final shape for '{key}': {dataset[key].shape}")
@@ -288,22 +274,16 @@ def save_dataset_as_pickle(dataset, output_path):
         pickle.dump(dataset, f)
     print("Save complete.")
 
-# --- 主程序入口 ---
 if __name__ == '__main__':
     # 您可以根据需要修改这里的参数
-    basedir = 'results'
-    ids = [0]
-    output_filename = 'my_dataset.pickle'
+    # basedir = 'results'
+    basedir = '/home/min414/data2/extra_storage'
+    ids = [0,1,2,] # 示例：处理多个ID
+    output_filename = '/home/min414/data2/extra_storage/BoB_012.pickle' # 1701477
     
-    # 1. 处理数据
     final_dataset = process_results_to_dataset(basedir, ids)
     
-    # 2. 保存为pickle文件
     if final_dataset['observations'].shape[0] > 0:
         save_dataset_as_pickle(final_dataset, output_filename)
     else:
         print("No data was processed. Pickle file not created.")
-
-
-
-
