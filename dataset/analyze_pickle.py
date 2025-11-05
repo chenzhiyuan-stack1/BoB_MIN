@@ -9,7 +9,7 @@ import numpy as np
 #   - terminals: (6534914,)
 
 # pickle_path = "/home/min414/data1/Schaferct/training_dataset_pickle/v8.pickle"
-pickle_path = 'BoB_012.pickle'
+pickle_path = '/home/min414/data2/extra_storage/BoB_3.pickle'
 with open(pickle_path, 'rb') as f:
     data = pickle.load(f)
 

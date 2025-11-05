@@ -278,9 +278,10 @@ if __name__ == '__main__':
     # 您可以根据需要修改这里的参数
     # basedir = 'results'
     basedir = '/home/min414/data2/extra_storage'
-    ids = [0,1,2,] # 示例：处理多个ID
-    output_filename = '/home/min414/data2/extra_storage/BoB_012.pickle' # 1701477
-    
+    ids = [3,] # 示例：处理多个ID
+    # output_filename = '/home/min414/data2/extra_storage/BoB_012.pickle' # 1701477
+    output_filename = '/home/min414/data2/extra_storage/BoB_3.pickle' # 233307
+
     final_dataset = process_results_to_dataset(basedir, ids)
     
     if final_dataset['observations'].shape[0] > 0:
