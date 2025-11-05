@@ -148,6 +148,7 @@ class MLP_GRU_v2(nn.Module):
     - 将时序上下文与其他信息融合，用于去噪
     """
     def __init__(self,
+                 state_dim,
                  action_dim,
                  device,
                  state_feature_dim=11, # 每个时间步的特征维度
