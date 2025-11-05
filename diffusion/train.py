@@ -123,21 +123,24 @@ def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: 
     diffusion_utils.print_banner("Starting OFFLINE Training", separator="=", num_star=90)
 
     # Load initial dataset(s)
-    for path in args.dataset_paths:
+    for idx, path in enumerate(args.dataset_paths):
         print(f"Loading dataset from: {path}")
         with open(path, 'rb') as f:
             dataset = pickle.load(f)
         dataset = adjust_dataset(dataset)
-        replay_buffer.load_dataset(dataset)
+        if idx == 0:
+            replay_buffer.load_dataset(dataset)
+        else:
+            replay_buffer.add_transition(dataset)
         del dataset
-    print(f"Replay buffer size: {replay_buffer.size}")
+    print(f"Replay buffer size: {replay_buffer._size}")
 
     evaluations = []
     training_iters = 0
     max_timesteps = args.num_epochs * args.num_steps_per_epoch
-
+    diffusion_utils.print_banner(f"Training Start", separator="*", num_star=90)
     while training_iters < max_timesteps:
-        iterations = args.eval_freq
+        iterations = int(args.eval_freq * args.num_steps_per_epoch)
         loss_metric = agent.train(
             replay_buffer,
             iterations=iterations,
@@ -158,7 +161,6 @@ def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: 
 
         # Save model
         agent.save_model(args.exp_run_path, curr_epoch)
-
 
 def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: ReplayBuffer):
     """Online training loop: collect -> process -> train."""
@@ -216,7 +218,6 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
     # Final model save after all rounds
     agent.save_model(args.exp_run_path, "final_online")
     print("Online training loop finished.")
-
 
 def log_metrics(epoch: int, loss_metric: dict, prefix: str = "Offline"):
     """Helper to log training metrics."""
@@ -316,7 +317,6 @@ def main(args: argparse.Namespace):
         wandb.finish()
     print("--- Training Finished ---")
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
@@ -357,7 +357,7 @@ if __name__ == "__main__":
     parser.add_argument('--max_q_backup', action='store_true', help="Use max Q backup")
 
     # --- Evaluation ---
-    parser.add_argument('--eval_datasets', type=str, nargs='+', default=["small_evaluation_datasets/BoB_3.pickle"], help="Paths to evaluation dataset files")
+    parser.add_argument('--eval_datasets', type=str, nargs='+', default=["BoB_3.pickle"], help="Paths to evaluation dataset files")
 
     args = parser.parse_args()
     main(args)
