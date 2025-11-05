@@ -214,6 +214,12 @@ class Diffusion_QL(object):
             torch.save(self.actor.state_dict(), f'{dir}/actor.pth')
             torch.save(self.critic.state_dict(), f'{dir}/critic.pth')
             torch.save(self.v_critic.state_dict(), f'{dir}/v_critic.pth')
+            
+    def save_newest_model(self, dir):
+        torch.save(self.actor.state_dict(), f'{dir}/new.pth')
+
+    def load_newest_model(self, dir):
+        self.actor.load_state_dict(torch.load(f'{dir}/new.pth'))
 
     def load_model(self, dir, id=None):
         if id is not None:
