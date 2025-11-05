@@ -214,7 +214,7 @@ class MLP_GRU_v2(nn.Module):
         # 输入: (batch * seq_len, feature_dim) -> 输出: (batch * seq_len, hidden_dim)
         encoded_state_steps = self.state_encoder(state_reshaped.view(-1, self.state_feature_dim))
         # 恢复序列形状
-        encoded_state_seq = encoded_state_steps.view(-1, self.state_seq_len, encoded_state_seq.shape[-1])
+        encoded_state_seq = encoded_state_steps.view(-1, self.state_seq_len, encoded_state_steps.shape[-1])
 
         # GRU处理序列，h_n是最后一个时间步的隐藏状态
         # output: (batch, seq_len, hidden_dim), h_n: (num_layers, batch, hidden_dim)
