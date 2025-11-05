@@ -1,11 +1,5 @@
 python diffusion/train.py \
     --mode offline \
-    --name offline_exp_1 \
+    --name offline_exp \
     --group my_offline_tests \
-    --dataset_paths my_full_dataset.pickle \
-    --eval_datasets small_evaluation_datasets/BoB_3.pickle \
-    --num_epochs 4000 \
-    --eval_freq 5000 \
-    --batch_size 2048 \
-    --lr 1e-5 \
     --use_wandb

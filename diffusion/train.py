@@ -326,13 +326,13 @@ if __name__ == "__main__":
     parser.add_argument('--name', type=str, default="train", help="Base name for the experiment")
     parser.add_argument('--mode', type=str, default="offline", choices=["offline", "online"], help="Training mode")
     parser.add_argument('--device', type=str, default="cuda" if torch.cuda.is_available() else "cpu")
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--seed', type=int, default=49)
     parser.add_argument('--exp_output_dir', type=str, default="results_exp", help="Unified directory for all experiment outputs")
     parser.add_argument('--use_wandb', action='store_true', help="Enable WandB logging")
 
     # --- Offline Mode Specific ---
     parser.add_argument('--dataset_paths', type=str, nargs='+', default=["BoB_012.pickle"], help="Paths to offline dataset files")
-    parser.add_argument('--eval_freq', type=int, default=5000, help="Evaluation frequency in training iterations")
+    parser.add_argument('--eval_freq', type=int, default=10, help="Evaluation frequency in training iterations")
     parser.add_argument('--num_epochs', type=int, default=4000)
     parser.add_argument('--num_steps_per_epoch', type=int, default=1000)
 
@@ -343,7 +343,7 @@ if __name__ == "__main__":
 
     # --- Agent & RL Parameters ---
     parser.add_argument('--batch_size', type=int, default=2048)
-    parser.add_argument('--buffer_size', type=int, default=5_000_000)
+    parser.add_argument('--buffer_size', type=int, default=2_000_000)
     parser.add_argument('--discount', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--lr', type=float, default=1e-5)
