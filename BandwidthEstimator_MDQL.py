@@ -143,6 +143,13 @@ class Estimator(object):
         self.bandwidth_prediction = learningBasedBWE
         isHeuristicUsed = False
         
+        # 估计冷启动的时候，模型输出是NAN
+        if math.isnan(learningBasedBWE) or math.isnan(heuristic_prediction):
+            logging.error(f"NaN detected! learningBasedBWE={learningBasedBWE}, heuristic_prediction={heuristic_prediction}")
+            # 兜底：用启发式或默认值
+            self.bandwidth_prediction = heuristic_prediction if not math.isnan(heuristic_prediction) else 2 * UNIT_M
+            heuristic_prediction = self.bandwidth_prediction
+        
         diff_predictions = abs(int(self.bandwidth_prediction) - int(heuristic_prediction))
         average_predictions = (int(self.bandwidth_prediction) + int(heuristic_prediction)) / 2
         percentage = diff_predictions / average_predictions

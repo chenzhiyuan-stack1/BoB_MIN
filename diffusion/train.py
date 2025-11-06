@@ -123,14 +123,16 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
         
         collection_id = f"{Path(args.name).stem}_round_{i}"
         
-        print(f"Starting data collection with ID: {collection_id}")
-        try:
-            subprocess.run(["bash", "receive_with_tc.sh", collection_id], check=True, capture_output=True, text=True)
+        result = subprocess.run(
+        ["bash", "receive_with_tc.sh", collection_id],
+        capture_output=True, text=True
+        )
+        if "__DATA_COLLECTION_DONE__" in result.stdout:
             print("Data collection finished successfully.")
-        except subprocess.CalledProcessError as e:
-            print(f"ERROR: Data collection script failed for ID {collection_id}.")
-            print(f"Stderr: {e.stderr}")
-            print(f"Stdout: {e.stdout}")
+        else:
+            print(f"WARNING: Data collection script did not finish as expected for ID {collection_id}.")
+            # print(f"Stdout: {result.stdout}")
+            print(f"Stderr: {result.stderr}")
             continue
 
         # --- Step 2: Data Processing ---

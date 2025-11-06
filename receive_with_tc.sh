@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 date=$(date '+%d_%m_%Y_%H%M')
 testid=$1
 MODELDIR="./model"
@@ -215,4 +214,5 @@ do
   done
 done
 
+echo "__DATA_COLLECTION_DONE__"
 exit 0
