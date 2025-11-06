@@ -9,7 +9,7 @@ import numpy as np
 #   - terminals: (6534914,)
 
 # pickle_path = "/home/min414/data1/Schaferct/training_dataset_pickle/v8.pickle"
-pickle_path = '/home/min414/data2/extra_storage/BoB_3.pickle'
+pickle_path = 'BoB_test.pickle'
 with open(pickle_path, 'rb') as f:
     data = pickle.load(f)
 
@@ -24,4 +24,5 @@ for key, value in data.items():
     except Exception as e:
         print(f"  - {key}: Could not convert to numpy array. Type: {type(value)}, Error: {e}")
         
-# print(data["observations"][1][44])  # 打印第一个观测值以进行检查
+print(data["observations"][1][44])  # 打印第一个观测值以进行检查
+print(data["observations"][1][56])  # 打印第一个观测值以进行检查
