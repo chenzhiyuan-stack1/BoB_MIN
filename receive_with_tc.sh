@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 date=$(date '+%d_%m_%Y_%H%M')
 testid=$1
 MODELDIR="./model"
@@ -155,8 +156,9 @@ runTestsOnModel() {
 }
 
 test_model_list=(
-  bob1
+  # bob1
   # heuristic2
+  MDQL
 )
 
 # 新增视频列表及参数
@@ -212,3 +214,5 @@ do
     fi
   done
 done
+
+exit 0
