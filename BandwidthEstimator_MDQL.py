@@ -193,6 +193,16 @@ class Estimator(object):
 
     def _get_full_packet_info(self) -> dict:
         return {
+            "avg_lost_pkts": calculate_state.avg_lost_pkts(self.packets_list),
+            "video_prob": calculate_state.video_prob(self.packets_list),
+            "audio_prob": calculate_state.audio_prob(self.packets_list),
+            "probe_prob": calculate_state.probe_prob(self.packets_list),
+            "received_video_bytes": calculate_state.received_video_bytes(self.packets_list),
+            "received_audio_bytes": calculate_state.received_audio_bytes(self.packets_list),
+            "payload_type": calculate_state.payload_type(self.packets_list),
+            "send_time": calculate_state.send_time(self.packets_list),
+            "receive_time": calculate_state.receive_time(self.packets_list),
+            "sequence_number": calculate_state.packet_number(self.packets_list),
             "all_payload_type": calculate_state.all_payload_type(self.packets_list),
             "all_sequence_number": calculate_state.all_sequence_number(self.packets_list),
             "all_send_timestamp": calculate_state.all_send_timestamp(self.packets_list),
