@@ -129,7 +129,7 @@ class Estimator(object):
         obs = update_and_get_observation(self.state_history, current_state_t)
         # 归一化并转换为 Tensor
         obs_normalized = obs * NORMAL_VECTOR
-        obs_tensor = torch.tensor(obs_normalized.reshape(1, -1), device=self.device, dtype=torch.float32)
+        obs_tensor = torch.tensor(obs_normalized.reshape(1, -1), dtype=torch.float32)
         # 使用 Diffusion-QL 模型预测带宽
         with torch.no_grad():
             action_bps = self.agent.actor.sample(obs_tensor).cpu().numpy().flatten()[0]
