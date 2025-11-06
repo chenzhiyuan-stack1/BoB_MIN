@@ -78,7 +78,6 @@ import json
 import numpy as np
 import pickle
 from collections import deque
-from tqdm import tqdm
 
 # --- TC Profile 解析函数 (保持不变) ---
 TC_PROFILE_DIR = '/home/min414/data2/BoB_MIN/tc_profiles'
@@ -160,6 +159,7 @@ def update_and_get_observation(history_deque: deque, new_state_t: np.ndarray) ->
 
 # --- 数据集构建核心函数 ---
 def process_results_to_dataset(basedir, ids, state_window_size=6):
+    from tqdm import tqdm
     dataset = {
         'observations': [], 'actions': [], 'next_observations': [],
         'rewards': [], 'terminals': [], 'true_capacities': [],
