@@ -62,9 +62,9 @@
 # 写个函数，输入basedir和ids（id的列表），输出一个字典
 # 把整个数据集的结构转换成下面的形式
 # data = {}
-# data['observations']: (6534914, 150)
+# data['observations']: (6534914, 66)
 # data['actions']: (6534914, 1)
-# data['next_observations']: (6534914, 150)
+# data['next_observations']: (6534914, 66)
 # data['rewards']: (6534914,)
 # data['terminals']: (6534914,)
 # data['true_capacities']: (6534914,)
