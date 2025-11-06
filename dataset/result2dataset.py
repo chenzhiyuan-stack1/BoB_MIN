@@ -80,47 +80,35 @@ import pickle
 from collections import deque
 from tqdm import tqdm
 
-# --- TC Profile 解析函数 (从 plot_trace_tc.py 迁移并适配) ---
+# --- TC Profile 解析函数 (保持不变) ---
 TC_PROFILE_DIR = '/home/min414/data2/BoB_MIN/tc_profiles'
 
 def parse_unit(value_str):
-    """解析带有单位的字符串，如 '1600kbit', '10s', '250ms', '1%'"""
     value_str = str(value_str).lower().strip()
-    if 'kbit' in value_str:
-        return float(value_str.replace('kbit', '')) * 1000
-    if 'mbit' in value_str:
-        return float(value_str.replace('mbit', '')) * 1000000
-    if 'ms' in value_str:
-        return float(value_str.replace('ms', ''))
-    if 's' in value_str:
-        return float(value_str.replace('s', '')) * 1000
-    if '%' in value_str:
-        return float(value_str.replace('%', '')) / 100.0
-    try:
-        return float(value_str)
-    except (ValueError, TypeError):
-        return 0.0
+    if 'kbit' in value_str: return float(value_str.replace('kbit', '')) * 1000
+    if 'mbit' in value_str: return float(value_str.replace('mbit', '')) * 1000000
+    if 'ms' in value_str: return float(value_str.replace('ms', ''))
+    if 's' in value_str: return float(value_str.replace('s', '')) * 1000
+    if '%' in value_str: return float(value_str.replace('%', '')) / 100.0
+    try: return float(value_str)
+    except (ValueError, TypeError): return 0.0
 
 def parse_tc_profile(profile_path):
-    """解析tc profile文件，提取rate, loss, delay, 和 duration"""
-    if not os.path.exists(profile_path):
-        # print(f"  [Warning] TC profile not found: {profile_path}") # 在tqdm中打印会扰乱进度条
-        return None
+    if not os.path.exists(profile_path): return None
     with open(profile_path, 'r') as f:
         lines = [line.strip() for line in f if line.strip() and not line.startswith('#')]
     if not lines: return []
     
-    commands = []
     rate_groups = []
     current_group = []
     for line in lines:
         if line.startswith('rate'):
             if current_group: rate_groups.append(current_group)
             current_group = [line]
-        else:
-            current_group.append(line)
+        else: current_group.append(line)
     if current_group: rate_groups.append(current_group)
 
+    commands = []
     for group in rate_groups:
         params = {'rate': 0, 'loss': 0, 'delay': 0, 'duration': 0}
         for cmd in group:
@@ -135,28 +123,21 @@ def parse_tc_profile(profile_path):
     return commands
 
 def get_tc_params_at_time(commands, time_ms):
-    """获取在特定时间点的TC参数 (循环查找)"""
-    if not commands:
-        return 0, 0, 0
-
+    if not commands: return 0, 0, 0
     total_cycle_duration = sum(cmd['duration'] for cmd in commands)
     if total_cycle_duration <= 0:
         cmd = commands[0]
         return cmd['rate'], cmd['loss'], cmd['delay']
-
     time_in_cycle = time_ms % total_cycle_duration
-    
     elapsed_time = 0
     for cmd in commands:
         if elapsed_time + cmd['duration'] > time_in_cycle:
             return cmd['rate'], cmd['loss'], cmd['delay']
         elapsed_time += cmd['duration']
-    
     last_cmd = commands[-1]
     return last_cmd['rate'], last_cmd['loss'], last_cmd['delay']
 
 def get_tc_profile_name(folder_path):
-    """从文件夹中的log文件名提取tc_profile_name"""
     for f in os.listdir(folder_path):
         if f.endswith('.log'):
             base_name = os.path.splitext(f)[0]
@@ -164,11 +145,21 @@ def get_tc_profile_name(folder_path):
             if len(parts) > 1: return parts[-1]
     return None
 
+# --- 新增：可复用的状态构建函数 ---
+def update_and_get_observation(history_deque: deque, new_state_t: np.ndarray) -> np.ndarray:
+    """
+    更新状态历史队列并返回拼接好的、平坦化的 observation 向量。
+    
+    :param history_deque: 存储历史状态的 deque 对象。
+    :param new_state_t: 当前时间步的 11 维状态向量。
+    :return: 拼接好的 66 维 observation 向量。
+    """
+    history_deque.append(new_state_t)
+    observation = np.concatenate(list(history_deque)).flatten()
+    return observation
+
 # --- 数据集构建核心函数 ---
 def process_results_to_dataset(basedir, ids, state_window_size=6):
-    """
-    处理原始数据，构建符合d4rl格式的数据集字典。
-    """
     dataset = {
         'observations': [], 'actions': [], 'next_observations': [],
         'rewards': [], 'terminals': [], 'true_capacities': [],
@@ -181,9 +172,8 @@ def process_results_to_dataset(basedir, ids, state_window_size=6):
         "mean_interarrival", "packet_jitter", "packet_loss_ratio"
     ]
     state_dim = len(state_keys)
-    zero_state_t = [0.0] * state_dim
+    zero_state_t = np.array([0.0] * state_dim)
 
-    # 使用tqdm包裹外层循环，展示ID处理进度
     for id_val in tqdm(ids, desc="Processing IDs"):
         id_path = os.path.join(basedir, str(id_val))
         if not os.path.isdir(id_path):
@@ -192,64 +182,45 @@ def process_results_to_dataset(basedir, ids, state_window_size=6):
 
         trace_folders = sorted([f for f in os.listdir(id_path) if os.path.isdir(os.path.join(id_path, f))])
         
-        # 使用tqdm包裹内层循环，展示单个ID内的trace处理进度
         for folder in tqdm(trace_folders, desc=f"  ID {id_val} Traces", leave=False):
             folder_path = os.path.join(id_path, folder)
             data_file = os.path.join(folder_path, 'data.jsonl')
-            
-            if not os.path.exists(data_file):
-                continue
+            if not os.path.exists(data_file): continue
 
             tc_profile_name = get_tc_profile_name(folder_path)
-            tc_commands = None
-            if tc_profile_name:
-                profile_path = os.path.join(TC_PROFILE_DIR, tc_profile_name)
-                tc_commands = parse_tc_profile(profile_path)
+            tc_commands = parse_tc_profile(os.path.join(TC_PROFILE_DIR, tc_profile_name)) if tc_profile_name else None
 
-            with open(data_file, 'r') as f:
-                lines = f.read().splitlines()
-            
-            if not lines:
-                continue
+            with open(data_file, 'r') as f: lines = f.read().splitlines()
+            if not lines: continue
 
             trace_data = [json.loads(line) for line in lines]
             num_steps = len(trace_data)
             
-            trace_states_t = []
-            for step_data in trace_data:
-                state_dict = step_data.get('state', {})
-                state_t = [float(state_dict.get(k, 0.0)) for k in state_keys]
-                trace_states_t.append(state_t)
+            trace_states_t = [np.array([float(step.get('state', {}).get(k, 0.0)) for k in state_keys]) for step in trace_data]
 
             state_history = deque([zero_state_t] * state_window_size, maxlen=state_window_size)
 
             for i in range(num_steps):
-                state_history.append(trace_states_t[i])
-                observation = np.concatenate(state_history).flatten()
+                # --- 使用新的复用函数构建 observation ---
+                observation = update_and_get_observation(state_history, trace_states_t[i])
 
                 if i + 1 < num_steps:
-                    next_state_history = deque(state_history, maxlen=state_window_size)
-                    next_state_history.append(trace_states_t[i+1])
-                    next_observation = np.concatenate(next_state_history).flatten()
+                    # 构建 next_observation
+                    next_state_history = deque(state_history, maxlen=state_window_size) # 复制当前历史
+                    next_observation = update_and_get_observation(next_state_history, trace_states_t[i+1])
                 else:
                     next_observation = np.zeros_like(observation)
 
                 action = trace_data[i].get('action', {}).get('bandwidth_estimation', 0.0)
                 
                 state_dict = trace_data[i].get('state', {})
-                queuing_delay = state_dict.get('queuing_delay', 0.0)
-                loss_ratio = state_dict.get('packet_loss_ratio', 0.0)
-                recv_rate = state_dict.get('receiving_rate', 0.0)
-                reward = -(queuing_delay / 100.0 + 5.0 * loss_ratio) + (recv_rate / 1000000.0)
-
+                reward = -(state_dict.get('queuing_delay', 0.0) / 100.0 + 5.0 * state_dict.get('packet_loss_ratio', 0.0)) + (state_dict.get('receiving_rate', 0.0) / 1000000.0)
                 terminal = 1 if (i == num_steps - 1) else 0
 
                 true_capacity, true_loss, true_delay = 0, 0, 0
-                if tc_commands:
-                    send_times = state_dict.get('send_time', [])
-                    if send_times:
-                        avg_send_time_ms = np.mean(send_times)
-                        true_capacity, true_loss, true_delay = get_tc_params_at_time(tc_commands, avg_send_time_ms)
+                if tc_commands and state_dict.get('send_time'):
+                    avg_send_time_ms = np.mean(state_dict['send_time'])
+                    true_capacity, true_loss, true_delay = get_tc_params_at_time(tc_commands, avg_send_time_ms)
 
                 dataset['observations'].append(observation)
                 dataset['actions'].append([action])
@@ -264,26 +235,19 @@ def process_results_to_dataset(basedir, ids, state_window_size=6):
     for key, value in dataset.items():
         dataset[key] = np.array(value)
         print(f"Final shape for '{key}': {dataset[key].shape}")
-
     return dataset
 
 def save_dataset_as_pickle(dataset, output_path):
-    """将数据集字典保存为pickle文件"""
     print(f"\nSaving dataset to {output_path}...")
     with open(output_path, 'wb') as f:
         pickle.dump(dataset, f)
     print("Save complete.")
 
 if __name__ == '__main__':
-    # 您可以根据需要修改这里的参数
-    # basedir = 'results'
     basedir = '/home/min414/data2/extra_storage'
-    ids = [3,] # 示例：处理多个ID
-    # output_filename = '/home/min414/data2/extra_storage/BoB_012.pickle' # 1701477
-    output_filename = '/home/min414/data2/extra_storage/BoB_3.pickle' # 233307
-
+    ids = [3,]
+    output_filename = '/home/min414/data2/extra_storage/BoB_3.pickle'
     final_dataset = process_results_to_dataset(basedir, ids)
-    
     if final_dataset['observations'].shape[0] > 0:
         save_dataset_as_pickle(final_dataset, output_filename)
     else:
