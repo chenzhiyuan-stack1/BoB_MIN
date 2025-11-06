@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import torch
 import numpy as np
@@ -14,6 +13,7 @@ from utils.packet_record import PacketRecord
 from BandwidthEstimator_heuristic2 import HeuristicEstimator
 from diffusion.ql_diffusion_e2e import Diffusion_QL as Agent
 from diffusion.norm_vector import NORMAL_VECTOR
+from dataset.result2dataset import update_and_get_observation
 
 
 UNIT_M = 1e6
@@ -36,12 +36,11 @@ class Estimator(object):
         if model_path is None:
             model_path = load_active_model()
         
-        # --- 核心改动：初始化 Diffusion-QL Agent ---
-        self.state_dim_t = 11  # 单个时间步的状态维度
+        self.state_dim_t = 11
         self.state_window_size = 6
-        self.obs_dim = self.state_dim_t * self.state_window_size # 66
+        self.obs_dim = self.state_dim_t * self.state_window_size
         self.action_dim = 1
-        self.max_action_mbps = 20.0 # 与训练时保持一致
+        self.max_action_mbps = 20.0
 
         self.agent = Agent(
             state_dim=self.obs_dim,
@@ -49,14 +48,14 @@ class Estimator(object):
             max_action=self.max_action_mbps,
         )
         try:
+            # 加载到正确的设备
             self.agent.actor.load_state_dict(torch.load(model_path))
-            self.agent.actor.eval() # 设置为评估模式
+            self.agent.actor.eval()
             logging.info(f"Successfully loaded Diffusion-QL model from: {model_path}")
         except Exception as e:
             logging.error(f"Failed to load Diffusion-QL model from {model_path}. Error: {e}")
             # 程序可以继续，但RL部分将输出0
-        
-        # --- 核心改动：维护一个与 result2dataset.py 一致的状态历史 ---
+            
         self.state_history = deque([np.zeros(self.state_dim_t)] * self.state_window_size, maxlen=self.state_window_size)
         
         # 保留启发式方法作为对比和混合策略
@@ -67,7 +66,7 @@ class Estimator(object):
         self.packet_record.reset()
         self.step_time = step_time
         self.last_arrival_time = 0
-        self.bandwidth_prediction = 2 * UNIT_M # 初始预测值
+        self.bandwidth_prediction = 2 * UNIT_M
         self.last_call = "init"
         
         self.mi_idx = 0
@@ -78,7 +77,6 @@ class Estimator(object):
         if self.last_arrival_time != 0:
             self.step_time = stats["arrival_time_ms"] - self.last_arrival_time
         self.last_arrival_time = stats["arrival_time_ms"]
-
         self.last_call = "report_states"
         
         packet_info = PacketInfo()
@@ -99,7 +97,7 @@ class Estimator(object):
 
     def get_estimated_bandwidth(self) -> int:
         if not (self.last_call and self.last_call == "report_states"):
-            return self.bandwidth_prediction
+            return int(self.bandwidth_prediction)
 
         self.last_call = "get_estimated_bandwidth"
         
@@ -127,29 +125,21 @@ class Estimator(object):
         ]
         current_state_t = np.array([current_state_dict.get(k, 0.0) for k in state_keys_for_model])
         
-        # 更新状态历史
-        self.state_history.append(current_state_t)
-        
         # 构建 66 维的 observation
-        obs = np.concatenate(list(self.state_history)).flatten()
-        
+        obs = update_and_get_observation(self.state_history, current_state_t)
         # 归一化并转换为 Tensor
         obs_normalized = obs * NORMAL_VECTOR
         obs_tensor = torch.tensor(obs_normalized.reshape(1, -1), device=self.device, dtype=torch.float32)
-        
         # 使用 Diffusion-QL 模型预测带宽
         with torch.no_grad():
-            # .sample() 直接输出以 Mbps 为单位的动作
             action_bps = self.agent.actor.sample(obs_tensor).cpu().numpy().flatten()[0]
+        learningBasedBWE = action_bps
         
-        learningBasedBWE = action_bps # 转换为 bps
-
         # --- 3. 结合启发式方法，得到最终预测值 (沿用旧逻辑) ---
         global FactorH
         heuristic_prediction, heuristic_overuse_flag = self.heuristic_estimator.get_estimated_bandwidth()
         heuristic_prediction = heuristic_prediction * FactorH
 
-        # 沿用旧的混合逻辑
         self.bandwidth_prediction = learningBasedBWE
         isHeuristicUsed = False
         
@@ -177,14 +167,12 @@ class Estimator(object):
         # 维护全局最小延迟
         self.global_min_delay = min(self.global_min_delay, current_state_dict['min_seen_delay'])
 
-        # 组合为一条记录
         mi_record = {
             "mi_idx": self.mi_idx,
-            "state": {**current_state_dict, **self._get_full_packet_info()}, # 合并基础状态和详细包信息
+            "state": {**current_state_dict, **self._get_full_packet_info()},
             "action": {"bandwidth_estimation": int(self.bandwidth_prediction)}
         }
 
-        # 写入 data.jsonl
         try:
             with open("data.jsonl", "a") as f:
                 f.write(json.dumps(mi_record, ensure_ascii=False) + "\n")
@@ -192,12 +180,11 @@ class Estimator(object):
             logging.error(f"Failed to write to data.jsonl: {e}")
 
         self.mi_idx += 1
-        self.packets_list = []  # 清空当前MI的包列表
+        self.packets_list = [] # 清空当前MI的包列表
         
         return int(self.bandwidth_prediction)
 
     def _get_full_packet_info(self) -> dict:
-        """一个辅助函数，用于获取用于日志记录的详细包信息"""
         return {
             "all_payload_type": calculate_state.all_payload_type(self.packets_list),
             "all_sequence_number": calculate_state.all_sequence_number(self.packets_list),
