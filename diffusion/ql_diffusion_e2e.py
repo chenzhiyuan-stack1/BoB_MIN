@@ -68,7 +68,7 @@ class Diffusion_QL(object):
                  max_q_backup=False,
                  eta=1.0,
                  beta_schedule='linear',
-                 n_timesteps=100,
+                 n_timesteps=10,
                  ema_decay=0.995,
                  step_start_ema=1000,
                  update_ema_every=5,
