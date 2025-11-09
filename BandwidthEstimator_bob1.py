@@ -157,7 +157,8 @@ class Estimator(object):
         video_path,
         video_width,
         video_height,
-        data_log_path="data.jsonl"  # 每个MI的记录存储路径，默认是data.jsonl
+        data_log_path="data.jsonl",  # 每个MI的记录存储路径，默认是data.jsonl
+        isHeuristicUsed=False
     ):
         """
         记录每个MI的网络状态、动作（带宽）、音视频信息到data.jsonl，格式化为一行一个json，便于后续处理。
@@ -194,6 +195,7 @@ class Estimator(object):
             "all_receive_timestamp": calculate_state.all_receive_timestamp(packets_list),
             "all_payload_size": calculate_state.all_payload_size(packets_list),
             "all_bandwidth_prediction": calculate_state.all_bandwidth_prediction(packets_list),
+            "isHeuristicUsed": isHeuristicUsed,
         }
 
         # 2. 动作
@@ -309,7 +311,8 @@ class Estimator(object):
             video_path="outvideo.yuv",
             video_width=320,
             video_height=240,
-            data_log_path="data.jsonl"
+            data_log_path="data.jsonl",
+            isHeuristicUsed = isHeuristicUsed
         )
         
         self.mi_idx += 1  # MI编号自增

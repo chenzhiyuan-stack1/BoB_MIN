@@ -72,6 +72,9 @@ class Estimator(object):
         self.mi_idx = 0
         self.global_min_delay = float("inf")
         self.packets_list = []
+        
+        self.delay = 0  # 新增：用于动态FactorH调整
+        self.previousDelay = 0  # 新增：用于动态FactorH调整
 
     def report_states(self, stats: dict):
         if self.last_arrival_time != 0:
@@ -100,6 +103,10 @@ class Estimator(object):
             return int(self.bandwidth_prediction)
 
         self.last_call = "get_estimated_bandwidth"
+        
+        # --- 维护 delay 和 previousDelay ---
+        self.previousDelay = self.delay
+        self.delay = current_state_dict["delay_avg_min_diff"]
         
         # --- 1. 统一计算当前决策周期的所有状态指标 ---
         # 这个字典将用于模型输入和日志记录，避免重复计算
@@ -138,10 +145,16 @@ class Estimator(object):
         # --- 3. 结合启发式方法，得到最终预测值 (沿用旧逻辑) ---
         global FactorH
         heuristic_prediction, heuristic_overuse_flag = self.heuristic_estimator.get_estimated_bandwidth()
-        heuristic_prediction = heuristic_prediction * FactorH
+        # heuristic_prediction = heuristic_prediction * FactorH
 
         self.bandwidth_prediction = learningBasedBWE
         isHeuristicUsed = False
+        
+        # 动态调整FactorH（仿照bob1）
+        try:
+            FactorH = 1 - (action_bps / (self.max_action_mbps * UNIT_M)) / 2
+        except Exception as e:
+            logging.warning(f"FactorH dynamic adjustment failed: {e}")
         
         # 估计冷启动的时候，模型输出是NAN
         if math.isnan(learningBasedBWE) or math.isnan(heuristic_prediction):
@@ -155,6 +168,8 @@ class Estimator(object):
         percentage = diff_predictions / average_predictions
         if percentage >= 0.3: # 如果差异过大，信任启发式方法
             self.bandwidth_prediction = heuristic_prediction
+            if self.delay - self.previousDelay < 200:
+                FactorH = (action_bps / (self.max_action_mbps * UNIT_M)) + 0.85
             isHeuristicUsed = True
 
         # 确保带宽在合理范围内
@@ -176,7 +191,7 @@ class Estimator(object):
 
         mi_record = {
             "mi_idx": self.mi_idx,
-            "state": {**current_state_dict, **self._get_full_packet_info()},
+            "state": {**current_state_dict, **self._get_full_packet_info(), "isHeuristicUsed": isHeuristicUsed},
             "action": {"bandwidth_estimation": int(self.bandwidth_prediction)}
         }
 

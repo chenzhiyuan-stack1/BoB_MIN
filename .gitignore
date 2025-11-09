@@ -34,6 +34,7 @@ results_exp/*
 /BandwidthEstimator.py
 /sender_pyinfer_online.json
 /receiver_pyinfer_online.json
+report.txt
 
 # raw_media
 /raw_media/*

@@ -609,6 +609,7 @@ class Estimator(object):
             "all_receive_timestamp": calculate_state.all_receive_timestamp(packets_list),
             "all_payload_size": calculate_state.all_payload_size(packets_list),
             "all_bandwidth_prediction": calculate_state.all_bandwidth_prediction(packets_list),
+            "isHeuristicUsed": True,
         }
 
         # 2. 动作
