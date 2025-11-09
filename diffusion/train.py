@@ -286,7 +286,7 @@ if __name__ == "__main__":
     parser.add_argument('--use_wandb', action='store_true', help="Enable WandB logging")
 
     # --- Offline Mode Specific ---
-    parser.add_argument('--dataset_paths', type=str, nargs='+', default=["BoB_012.pickle"], help="Paths to offline dataset files")
+    parser.add_argument('--dataset_paths', type=str, nargs='+', default=["BoB_012.pickle", "BoB_45.pickle",], help="Paths to offline dataset files")
     parser.add_argument('--eval_freq', type=int, default=10, help="Evaluation frequency in training iterations")
     parser.add_argument('--num_epochs', type=int, default=4000)
     parser.add_argument('--num_steps_per_epoch', type=int, default=1000)
@@ -300,7 +300,7 @@ if __name__ == "__main__":
 
     # --- Agent & RL Parameters ---
     parser.add_argument('--batch_size', type=int, default=2048)
-    parser.add_argument('--buffer_size', type=int, default=2_000_000)
+    parser.add_argument('--buffer_size', type=int, default=3_000_000)
     parser.add_argument('--discount', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--lr', type=float, default=1e-5)
