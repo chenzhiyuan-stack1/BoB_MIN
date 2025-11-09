@@ -44,4 +44,4 @@ report.txt
 *.pickle
 
 # ckpt
-/model/new.pth
+/model/new*.pth
