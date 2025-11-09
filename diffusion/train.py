@@ -69,7 +69,7 @@ def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: 
         if idx == 0:
             replay_buffer.load_dataset(dataset)
         else:
-            replay_buffer.add_transition(dataset)
+            replay_buffer.add_transitions(dataset)
         del dataset
     print(f"Replay buffer size: {replay_buffer._size}")
 
