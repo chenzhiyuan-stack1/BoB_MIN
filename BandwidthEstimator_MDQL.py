@@ -104,10 +104,6 @@ class Estimator(object):
 
         self.last_call = "get_estimated_bandwidth"
         
-        # --- 维护 delay 和 previousDelay ---
-        self.previousDelay = self.delay
-        self.delay = current_state_dict["delay_avg_min_diff"]
-        
         # --- 1. 统一计算当前决策周期的所有状态指标 ---
         # 这个字典将用于模型输入和日志记录，避免重复计算
         current_state_dict = {
@@ -123,6 +119,10 @@ class Estimator(object):
             "packet_jitter": calculate_state.packet_jitter(self.packets_list),
             "packet_loss_ratio": calculate_state.packet_loss_ratio(self.packets_list),
         }
+        
+        # --- 维护 delay 和 previousDelay ---
+        self.previousDelay = self.delay
+        self.delay = current_state_dict.get("delay_avg_min_diff", 0.0)
         
         # --- 2. 构建模型输入 (obs) 并进行预测 ---
         state_keys_for_model = [
