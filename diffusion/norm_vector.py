@@ -26,6 +26,7 @@ def adjust_dataset(dataset_dict, b_in_Mb=1e6):
     使用预定义的NORMAL_VECTOR对数据集进行归一化。
     """
     # 归一化 actions
+    dataset_dict["actions"] = dataset_dict["actions"].astype(np.float64)
     dataset_dict["actions"] /= b_in_Mb
 
     # 归一化 observations 和 next_observations
