@@ -92,7 +92,7 @@ def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: 
         log_metrics(curr_epoch, loss_metric)
 
         # Evaluation
-        mse, accuracy, over = evaluate_policy(agent, args.eval_datasets, args.device)
+        mse, accuracy, over = evaluate_policy(agent.actor, args.eval_datasets, args.device)
         evaluations.append([mse, accuracy, over, np.mean(loss_metric['bc_loss']), curr_epoch])
         np.save(os.path.join(args.exp_run_path, "eval_results.npy"), evaluations)
         log_evaluation(mse, accuracy, over)
@@ -164,7 +164,7 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
 
         # --- Step 5: Logging & Evaluation ---
         log_metrics(i, loss_metric, prefix="Online")
-        mse, accuracy, over = evaluate_policy(agent, args.eval_datasets, args.device)
+        mse, accuracy, over = evaluate_policy(agent.actor, args.eval_datasets, args.device)
         log_evaluation(mse, accuracy, over, prefix="Online")
         
         # --- Step 6: Save Model ---
