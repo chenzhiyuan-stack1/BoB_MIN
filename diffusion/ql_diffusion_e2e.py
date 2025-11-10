@@ -199,9 +199,6 @@ class Diffusion_QL(object):
                     'Train/Actor Loss': actor_loss.item(),
                 })
 
-            print('target_q:', target_q.mean().item(), 'next_v:', next_v.mean().item(), 'v:', v.mean().item(), 'q1:', q1.mean().item(), 'q2:', q2.mean().item(), 'qs:', qs.mean().item(),
-                  'bc_loss:', bc_loss.item(), 'critic_loss:', critic_loss.item(), 'v_loss:', v_loss.item(), 'actor_loss:', actor_loss.item())
-
             metric['ql_loss'].append(critic_loss.item())
             metric['v_loss'].append(v_loss.item())
             metric['actor_loss'].append(actor_loss.item())
