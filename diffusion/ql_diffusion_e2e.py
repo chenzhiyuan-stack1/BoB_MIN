@@ -96,10 +96,10 @@ class Diffusion_QL(object):
         
         self.critic = Critic(state_dim, action_dim).to(device)
         self.critic_target = copy.deepcopy(self.critic)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-5)
         
         self.v_critic = V_Critic(state_dim).to(device)
-        self.v_critic_optimizer = torch.optim.Adam(self.v_critic.parameters(), lr=3e-4)
+        self.v_critic_optimizer = torch.optim.Adam(self.v_critic.parameters(), lr=1e-5)
 
         if lr_decay:
             self.actor_lr_scheduler = CosineAnnealingLR(self.actor_optimizer, T_max=lr_maxt, eta_min=0.)
