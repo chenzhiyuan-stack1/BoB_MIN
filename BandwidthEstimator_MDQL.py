@@ -28,14 +28,11 @@ def load_active_model(active_model_file='active_model'):
             logging.debug("Using model="+model)
         except Exception as ex:
             logging.debug("Couldn't find active model using default value! Exception:" + ex)
-            model='./model/new.pth'
+            model='./model/MDQL.pth'
     return model
 
 class Estimator(object):
-    def __init__(self, model_path=None, step_time=200):
-        if model_path is None:
-            model_path = load_active_model()
-        
+    def __init__(self, model_path=load_active_model(), step_time=200):
         self.state_dim_t = 11
         self.state_window_size = 6
         self.obs_dim = self.state_dim_t * self.state_window_size
@@ -49,7 +46,7 @@ class Estimator(object):
         )
         try:
             # 加载到正确的设备
-            self.agent.actor.load_state_dict(torch.load(model_path), map_location=torch.device('cpu'))
+            self.agent.actor.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
             self.agent.actor.eval()
             logging.info(f"Successfully loaded Diffusion-QL model from: {model_path}")
         except Exception as e:
