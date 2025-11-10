@@ -26,8 +26,7 @@ import subprocess
 import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import List
-from tqdm import tqdm
+from typing import Dict
 
 import numpy as np
 import torch
@@ -42,8 +41,8 @@ from diffusion.utils.data_sampler import ReplayBuffer
 from diffusion.utils.logger import logger, setup_logger
 from diffusion.utils import utils as diffusion_utils
 from dataset.result2dataset import process_results_to_dataset, save_dataset_as_pickle
-from norm_vector import adjust_dataset, NORMAL_VECTOR
-from eval import evaluate_policy
+from diffusion.norm_vector import adjust_dataset
+from diffusion.eval import evaluate_policy
 
 STATE_DIM = 66
 ACTION_DIM = 1 
@@ -55,6 +54,28 @@ def set_seed(seed: int, deterministic_torch: bool = False):
     random.seed(seed)
     torch.manual_seed(seed)
     torch.use_deterministic_algorithms(deterministic_torch)
+
+def log_all_metrics(step: int, train_metrics: Dict[str, list], mse: float, accuracy: float, over: float, prefix: str):
+    """Helper to log all aggregated training and evaluation metrics to console and WandB."""
+    avg_train_metrics = {key: np.mean(val) for key, val in train_metrics.items()}
+
+    diffusion_utils.print_banner(f"{prefix} Step: {step}", separator="*", num_star=90)
+    logger.record_tabular(f'{prefix}/Step', step)
+    for key, val in avg_train_metrics.items():
+        logger.record_tabular(f'Train/{key}', val)
+    logger.record_tabular('Eval/MSE', mse)
+    logger.record_tabular('Eval/Accuracy', accuracy)
+    logger.record_tabular('Eval/Overestimation', over)
+    logger.dump_tabular()
+
+    if wandb.run:
+        wandb_log_data = {}
+        for key, val in avg_train_metrics.items():
+            wandb_log_data[f'{prefix}/Train/{key}'] = val
+        wandb_log_data[f'{prefix}/Eval/MSE'] = mse
+        wandb_log_data[f'{prefix}/Eval/Accuracy'] = accuracy
+        wandb_log_data[f'{prefix}/Eval/Overestimation'] = over
+        wandb.log(wandb_log_data, step=step)
 
 def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: ReplayBuffer):
     """Offline training loop."""
@@ -72,32 +93,29 @@ def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: 
             replay_buffer.add_transitions(dataset)
         del dataset
     print(f"Replay buffer size: {replay_buffer._size}")
-
-    evaluations = []
+    
     training_iters = 0
     max_timesteps = args.num_epochs * args.num_steps_per_epoch
     diffusion_utils.print_banner(f"Training Start", separator="*", num_star=90)
     while training_iters < max_timesteps:
         iterations = int(args.eval_freq * args.num_steps_per_epoch)
-        loss_metric = agent.train_debug(
+        loss_metric = agent.train(
             replay_buffer,
             iterations=iterations,
             batch_size=args.batch_size,
-            wandb_logger=wandb if args.use_wandb else None
         )
         training_iters += iterations
         curr_epoch = int(training_iters // args.num_steps_per_epoch)
 
         # Logging
         diffusion_utils.print_banner(f"Train step: {training_iters}", separator="*", num_star=90)
-        log_metrics(curr_epoch, loss_metric)
 
         # Evaluation
         mse, accuracy, over = evaluate_policy(agent.actor, args.eval_datasets, args.device)
-        evaluations.append([mse, accuracy, over, np.mean(loss_metric['bc_loss']), curr_epoch])
-        np.save(os.path.join(args.exp_run_path, "eval_results.npy"), evaluations)
-        log_evaluation(mse, accuracy, over)
 
+        # Log metrics
+        log_all_metrics(curr_epoch, loss_metric, mse, accuracy, over, prefix="Offline")
+        
         # Save model
         agent.save_model(args.exp_run_path, curr_epoch)
         
@@ -164,9 +182,10 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
         )
 
         # --- Step 5: Logging & Evaluation ---
-        log_metrics(i, loss_metric, prefix="Online")
         mse, accuracy, over = evaluate_policy(agent.actor, args.eval_datasets, args.device)
-        log_evaluation(mse, accuracy, over, prefix="Online")
+
+        # Log metrics
+        log_all_metrics(i, loss_metric, mse, accuracy, over, prefix="Online")
         
         # --- Step 6: Save Model ---
         agent.save_model(args.exp_run_path, f"online_round_{i}") # for safety backup
@@ -175,41 +194,7 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
     agent.save_model(args.exp_run_path, "final_online")
     print("Online training loop finished.")
 
-def log_metrics(epoch: int, loss_metric: dict, prefix: str = "Offline"):
-    """Helper to log training metrics."""
-    bc_loss = np.mean(loss_metric['bc_loss'])
-    actor_loss = np.mean(loss_metric['actor_loss'])
-    v_loss = np.mean(loss_metric['v_loss'])
-    ql_loss = np.mean(loss_metric['ql_loss'])
 
-    logger.record_tabular(f'{prefix}/Trained Epochs', epoch)
-    logger.record_tabular(f'{prefix}/BC Loss', bc_loss)
-    logger.record_tabular(f'{prefix}/Actor Loss', actor_loss)
-    logger.record_tabular(f'{prefix}/V Loss', v_loss)
-    logger.record_tabular(f'{prefix}/QL Loss', ql_loss)
-    logger.dump_tabular()
-
-    if wandb.run:
-        wandb.log({
-            f'{prefix}/BC Loss': bc_loss,
-            f'{prefix}/Actor Loss': actor_loss,
-            f'{prefix}/V Loss': v_loss,
-            f'{prefix}/QL Loss': ql_loss,
-        }, step=epoch)
-
-def log_evaluation(mse: float, accuracy: float, over: float, prefix: str = "Eval"):
-    """Helper to log evaluation metrics."""
-    logger.record_tabular(f'{prefix}/MSE', mse)
-    logger.record_tabular(f'{prefix}/Accuracy', accuracy)
-    logger.record_tabular(f'{prefix}/Overestimation', over)
-    logger.dump_tabular()
-
-    if wandb.run:
-        wandb.log({
-            f'{prefix}/MSE': mse,
-            f'{prefix}/Accuracy': accuracy,
-            f'{prefix}/Overestimation': over,
-        })
 
 def main(args: argparse.Namespace):
     # --- 1. Setup ---

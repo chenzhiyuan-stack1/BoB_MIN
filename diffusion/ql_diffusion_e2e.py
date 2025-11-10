@@ -118,8 +118,11 @@ class Diffusion_QL(object):
             return
         self.ema.update_model_average(self.ema_model, self.actor)
 
-    def train(self, replay_buffer, iterations, batch_size=100, log_writer=None, wandb_logger=None):
-        metric = {'bc_loss': [], 'ql_loss': [], 'actor_loss': [], 'v_loss': []}
+    def train(self, replay_buffer, iterations, batch_size=100):
+        metric = {
+            'bc_loss': [], 'ql_loss': [], 'actor_loss': [], 'v_loss': [],
+            'target_q': [], 'next_v': [], 'v': [], 'q1': [], 'q2': [], 'qs_for_policy': []
+        }
         for _ in range(iterations):
             # Sample replay buffer / batch
             # action (Mbps)
@@ -174,43 +177,29 @@ class Diffusion_QL(object):
                 target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
             self.step += 1
-
+            
             """ Log """
-            if log_writer is not None:
-                if self.grad_norm > 0:
-                    log_writer.add_scalar('Actor Grad Norm', actor_grad_norms.max().item(), self.step)
-                    log_writer.add_scalar('Critic Grad Norm', critic_grad_norms.max().item(), self.step)
-                log_writer.add_scalar('BC Loss', bc_loss.item(), self.step)
-                log_writer.add_scalar('QL Loss', critic_loss.item(), self.step)
-                log_writer.add_scalar('V Loss', v_loss.item(), self.step)
-                log_writer.add_scalar('Actor Loss', actor_loss.item(), self.step)
-                
-            if wandb_logger is not None:
-                wandb_logger.log({
-                    'Train/target_q': target_q.mean().item(),
-                    'Train/next_v': next_v.mean().item(),
-                    'Train/v': v.mean().item(),
-                    'Train/q1': q1.mean().item(),
-                    'Train/q2': q2.mean().item(),
-                    'Train/qs_for_policy': qs.mean().item(),
-                    'Train/BC Loss': bc_loss.item(),
-                    'Train/QL Loss': critic_loss.item(),
-                    'Train/V Loss': v_loss.item(),
-                    'Train/Actor Loss': actor_loss.item(),
-                })
-
             metric['ql_loss'].append(critic_loss.item())
             metric['v_loss'].append(v_loss.item())
             metric['actor_loss'].append(actor_loss.item())
             metric['bc_loss'].append(bc_loss.item())
+            metric['target_q'].append(target_q.mean().item())
+            metric['next_v'].append(next_v.mean().item())
+            metric['v'].append(v.mean().item())
+            metric['q1'].append(q1.mean().item())
+            metric['q2'].append(q2.mean().item())
+            metric['qs_for_policy'].append(qs.mean().item())
 
         if self.lr_decay: 
             self.actor_lr_scheduler.step()
 
         return metric
 
-    def train_debug(self, replay_buffer, iterations, batch_size=100, log_writer=None, wandb_logger=None):
-        metric = {'bc_loss': [], 'ql_loss': [], 'actor_loss': [], 'v_loss': []}
+    def train_debug(self, replay_buffer, iterations, batch_size=100):
+        metric = {
+            'bc_loss': [], 'ql_loss': [], 'actor_loss': [], 'v_loss': [],
+            'target_q': [], 'next_v': [], 'v': [], 'q1': [], 'q2': [], 'qs_for_policy': []
+        }
         for i in range(iterations):
             # Sample replay buffer / batch
             state, action, reward, next_state, not_done = replay_buffer.sample(batch_size)
@@ -311,33 +300,16 @@ class Diffusion_QL(object):
             self.step += 1
 
             """ Log """
-            if log_writer is not None:
-                if self.grad_norm > 0:
-                    log_writer.add_scalar('Actor Grad Norm', actor_grad_norms.max().item(), self.step)
-                    log_writer.add_scalar('Critic Grad Norm', critic_grad_norms.max().item(), self.step)
-                log_writer.add_scalar('BC Loss', bc_loss.item(), self.step)
-                log_writer.add_scalar('QL Loss', critic_loss.item(), self.step)
-                log_writer.add_scalar('V Loss', v_loss.item(), self.step)
-                log_writer.add_scalar('Actor Loss', actor_loss.item(), self.step)
-                
-            if wandb_logger is not None:
-                wandb_logger.log({
-                    'Train/target_q': target_q.mean().item(),
-                    'Train/next_v': next_v.mean().item(),
-                    'Train/v': v.mean().item(),
-                    'Train/q1': q1.mean().item(),
-                    'Train/q2': q2.mean().item(),
-                    'Train/qs_for_policy': qs.mean().item(),
-                    'Train/BC Loss': bc_loss.item(),
-                    'Train/QL Loss': critic_loss.item(),
-                    'Train/V Loss': v_loss.item(),
-                    'Train/Actor Loss': actor_loss.item(),
-                })
-
             metric['ql_loss'].append(critic_loss.item())
             metric['v_loss'].append(v_loss.item())
             metric['actor_loss'].append(actor_loss.item())
             metric['bc_loss'].append(bc_loss.item())
+            metric['target_q'].append(target_q.mean().item())
+            metric['next_v'].append(next_v.mean().item())
+            metric['v'].append(v.mean().item())
+            metric['q1'].append(q1.mean().item())
+            metric['q2'].append(q2.mean().item())
+            metric['qs_for_policy'].append(qs.mean().item())
 
         if self.lr_decay: 
             self.actor_lr_scheduler.step()

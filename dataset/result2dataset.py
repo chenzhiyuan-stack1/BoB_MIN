@@ -216,7 +216,21 @@ def process_results_to_dataset(basedir, ids, state_window_size=6):
                 action = trace_data[i].get('action', {}).get('bandwidth_estimation', 0.0)
                 
                 state_dict = trace_data[i].get('state', {})
-                reward = -(state_dict.get('queuing_delay', 0.0) / 100.0 + 5.0 * state_dict.get('packet_loss_ratio', 0.0)) + (state_dict.get('receiving_rate', 0.0) / 1000000.0)
+                
+                # --- 核心改动：安全地计算 reward 的每个部分 ---
+                queuing_delay = state_dict.get('queuing_delay', 0.0)
+                packet_loss_ratio = state_dict.get('packet_loss_ratio', 0.0)
+                receiving_rate = state_dict.get('receiving_rate', 0.0)
+
+                # 如果 queuing_delay 不是有限数，则该项为0
+                queuing_delay_term = (queuing_delay / 100.0) if np.isfinite(queuing_delay) else 0.0
+                
+                # 为稳健起见，也检查其他项
+                packet_loss_term = (5.0 * packet_loss_ratio) if np.isfinite(packet_loss_ratio) else 0.0
+                receiving_rate_term = (receiving_rate / 1000000.0) if np.isfinite(receiving_rate) else 0.0
+                
+                reward = - (queuing_delay_term + packet_loss_term) + receiving_rate_term
+                
                 terminal = 1 if (i == num_steps - 1) else 0
 
                 true_capacity, true_loss, true_delay = 0, 0, 0
