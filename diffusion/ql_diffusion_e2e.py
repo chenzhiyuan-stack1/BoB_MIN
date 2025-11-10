@@ -209,6 +209,141 @@ class Diffusion_QL(object):
 
         return metric
 
+    def train_debug(self, replay_buffer, iterations, batch_size=100, log_writer=None, wandb_logger=None):
+        metric = {'bc_loss': [], 'ql_loss': [], 'actor_loss': [], 'v_loss': []}
+        for i in range(iterations):
+            # Sample replay buffer / batch
+            state, action, reward, next_state, not_done = replay_buffer.sample(batch_size)
+            state = state.to(self.device)
+            action = action.to(self.device)
+            next_state = next_state.to(self.device)
+            reward = reward.to(self.device)
+            not_done = not_done.to(self.device)
+
+            # ======================= DEBUGGING BLOCK 1: Check Inputs =======================
+            if i == 0: # 只在第一次迭代时检查，避免刷屏
+                print("--- Iteration 0: Input Check ---")
+                if torch.isnan(state).any() or torch.isinf(state).any():
+                    print("!!! FATAL: NaN/inf found in 'state' input!")
+                if torch.isnan(action).any() or torch.isinf(action).any():
+                    print("!!! FATAL: NaN/inf found in 'action' input!")
+                if torch.isnan(reward).any() or torch.isinf(reward).any():
+                    print("!!! FATAL: NaN/inf found in 'reward' input!")
+                print(f"Reward stats: mean={reward.mean().item():.4f}, min={reward.min().item():.4f}, max={reward.max().item():.4f}")
+                print("--- End Input Check ---")
+            # ===============================================================================
+
+            """ Update Critic """
+            with torch.no_grad():
+                target_q = self.critic.q_min(state, action)
+                next_v = self.v_critic(next_state)
+            
+            v = self.v_critic(state)
+            adv = target_q - v
+            v_loss = asymmetric_l2_loss(adv, 0.7)
+
+            # ======================= DEBUGGING BLOCK 2: V-Loss Calculation =======================
+            if torch.isnan(v_loss).any():
+                print("\n!!! V-Loss is NaN. Checking components:")
+                print(f"target_q has NaN: {torch.isnan(target_q).any()}, has inf: {torch.isinf(target_q).any()}")
+                print(f"next_v has NaN: {torch.isnan(next_v).any()}, has inf: {torch.isinf(next_v).any()}")
+                print(f"v has NaN: {torch.isnan(v).any()}, has inf: {torch.isinf(v).any()}")
+                print(f"adv has NaN: {torch.isnan(adv).any()}, has inf: {torch.isinf(adv).any()}")
+                # 提前终止，防止错误蔓延
+                raise RuntimeError("NaN detected in V-Loss calculation. Aborting.")
+            # =====================================================================================
+
+            self.v_critic_optimizer.zero_grad(set_to_none=True)
+            v_loss.backward()
+            self.v_critic_optimizer.step()
+            
+            """Update Critic Q functions"""
+            with torch.no_grad():
+                targets = reward + self.discount * next_v
+            
+            q1, q2 = self.critic(state, action)
+            critic_loss = F.mse_loss(q1, targets) + F.mse_loss(q2, targets)
+
+            # ======================= DEBUGGING BLOCK 3: Critic-Loss Calculation =======================
+            if torch.isnan(critic_loss).any():
+                print("\n!!! Critic-Loss is NaN. Checking components:")
+                print(f"targets has NaN: {torch.isnan(targets).any()}, has inf: {torch.isinf(targets).any()}")
+                print(f"q1 has NaN: {torch.isnan(q1).any()}, has inf: {torch.isinf(q1).any()}")
+                print(f"q2 has NaN: {torch.isnan(q2).any()}, has inf: {torch.isinf(q2).any()}")
+                raise RuntimeError("NaN detected in Critic-Loss calculation. Aborting.")
+            # ==========================================================================================
+
+            self.critic_optimizer.zero_grad(set_to_none=True)
+            critic_loss.backward()
+            if self.grad_norm > 0:
+                critic_grad_norms = nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.grad_norm, norm_type=2)
+            self.critic_optimizer.step()
+
+
+            """ Policy Training """
+            with torch.no_grad():
+                qs = self.critic_target.q_min(state, action)
+            
+            bc_loss = self.actor.loss(action, state, qs)
+            actor_loss = bc_loss
+
+            # ======================= DEBUGGING BLOCK 4: Actor-Loss Calculation =======================
+            if torch.isnan(actor_loss).any():
+                print("\n!!! Actor-Loss is NaN. Checking components:")
+                print(f"qs has NaN: {torch.isnan(qs).any()}, has inf: {torch.isinf(qs).any()}")
+                # bc_loss 内部复杂，先确认输入 qs
+                raise RuntimeError("NaN detected in Actor-Loss calculation. Aborting.")
+            # =========================================================================================
+
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            if self.grad_norm > 0: 
+                actor_grad_norms = nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.grad_norm, norm_type=2)
+            self.actor_optimizer.step()
+
+            """ Step Target network """
+            if self.step % self.update_ema_every == 0:
+                self.step_ema()
+            
+            for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
+                target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
+
+            self.step += 1
+
+            """ Log """
+            if log_writer is not None:
+                if self.grad_norm > 0:
+                    log_writer.add_scalar('Actor Grad Norm', actor_grad_norms.max().item(), self.step)
+                    log_writer.add_scalar('Critic Grad Norm', critic_grad_norms.max().item(), self.step)
+                log_writer.add_scalar('BC Loss', bc_loss.item(), self.step)
+                log_writer.add_scalar('QL Loss', critic_loss.item(), self.step)
+                log_writer.add_scalar('V Loss', v_loss.item(), self.step)
+                log_writer.add_scalar('Actor Loss', actor_loss.item(), self.step)
+                
+            if wandb_logger is not None:
+                wandb_logger.log({
+                    'Train/target_q': target_q.mean().item(),
+                    'Train/next_v': next_v.mean().item(),
+                    'Train/v': v.mean().item(),
+                    'Train/q1': q1.mean().item(),
+                    'Train/q2': q2.mean().item(),
+                    'Train/qs_for_policy': qs.mean().item(),
+                    'Train/BC Loss': bc_loss.item(),
+                    'Train/QL Loss': critic_loss.item(),
+                    'Train/V Loss': v_loss.item(),
+                    'Train/Actor Loss': actor_loss.item(),
+                })
+
+            metric['ql_loss'].append(critic_loss.item())
+            metric['v_loss'].append(v_loss.item())
+            metric['actor_loss'].append(actor_loss.item())
+            metric['bc_loss'].append(bc_loss.item())
+
+        if self.lr_decay: 
+            self.actor_lr_scheduler.step()
+
+        return metric
+
     def sample_action(self, state):
         state = torch.FloatTensor(state.to("cpu").reshape(1, -1)).to(self.device)
         state_rpt = torch.repeat_interleave(state, repeats=10, dim=0)

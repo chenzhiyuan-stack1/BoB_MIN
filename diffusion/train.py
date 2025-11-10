@@ -79,7 +79,7 @@ def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: 
     diffusion_utils.print_banner(f"Training Start", separator="*", num_star=90)
     while training_iters < max_timesteps:
         iterations = int(args.eval_freq * args.num_steps_per_epoch)
-        loss_metric = agent.train(
+        loss_metric = agent.train_debug(
             replay_buffer,
             iterations=iterations,
             batch_size=args.batch_size,

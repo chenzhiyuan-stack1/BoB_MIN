@@ -153,7 +153,9 @@ def update_and_get_observation(history_deque: deque, new_state_t: np.ndarray) ->
     :param new_state_t: 当前时间步的 11 维状态向量。
     :return: 拼接好的 66 维 observation 向量。
     """
-    history_deque.append(new_state_t)
+    # --- 核心改动：将 inf 和 nan 值替换为 0 ---
+    clean_state_t = np.nan_to_num(new_state_t, nan=0.0, posinf=0.0, neginf=0.0)
+    history_deque.append(clean_state_t)
     observation = np.concatenate(list(history_deque)).flatten()
     return observation
 
