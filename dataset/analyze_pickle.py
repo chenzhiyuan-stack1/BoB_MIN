@@ -10,7 +10,7 @@ import numpy as np
 
 # pickle_path = "/home/min414/data1/Schaferct/training_dataset_pickle/v8.pickle"
 # pickle_path = '/home/min414/data2/extra_storage/BoB_45.pickle'
-pickle_path = '/home/min414/data2/extra_storage/BoB_4.pickle'
+pickle_path = '/home/min414/data2/extra_storage/BoB_3.pickle'
 with open(pickle_path, 'rb') as f:
     data = pickle.load(f)
 
@@ -24,13 +24,6 @@ for key, value in data.items():
         print(f"  - {key}: {np_array.shape}")
     except Exception as e:
         print(f"  - {key}: Could not convert to numpy array. Type: {type(value)}, Error: {e}")
-        
-
-pickle_path = '/home/min414/data2/extra_storage/BoB_5.pickle'
-with open(pickle_path, 'rb') as f:
-    data1 = pickle.load(f)
 
 print(data["observations"][5].reshape(6, 11))  # 打印第一个观测值并重塑为6x11矩阵
-print(data1["observations"][5].reshape(6, 11))  # 打印第一个观测值并重塑为6x11矩阵
 print(data["actions"][120])
-print(data1["actions"][120])

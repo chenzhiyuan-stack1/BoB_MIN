@@ -13,7 +13,7 @@ agent = Diffusion_QL(
     )
 # 假设模型文件在 'results_exp/your_exp_name/actor_240.pth' 等
 # 请根据实际路径修改
-# agent.load_model("results_exp/your_exp_name", '240')
+agent.load_model("dataset/ckpt", '240')
 print("Agent initialized. Make sure to load the correct model weights.")
 
 
@@ -24,8 +24,8 @@ with open(pickle_path, 'rb') as f:
 
 # --- 3. 准备单个输入样本 ---
 # 从Numpy数组中获取数据
-obs_np = data['observations'][1100] * NORMAL_VECTOR
-actions_np = data['actions'][1100] / 1e6
+obs_np = data['observations'][2200] * NORMAL_VECTOR
+actions_np = data['actions'][2200] / 1e6
 
 # --- 核心改动：将Numpy数组转换为PyTorch张量，并添加批次维度 ---
 # obs: 从 (66,) 变为 (1, 66)
@@ -50,7 +50,7 @@ with torch.no_grad(): # 在推理时使用 no_grad
     # sample() 内部处理了设备，所以不需要 .to(device)
     actor_output = agent.actor.sample(obs_tensor)
     print("Actor sample output shape:", actor_output.shape)
-    print("Actor sample output:", actor_output)
+    print("Actor sample output:", actor_output.numpy().flatten()[0])
 
     # critic 和 v_critic 需要手动将张量移动到设备
     q1_output, q2_output = agent.critic(obs_tensor, actions_tensor)
