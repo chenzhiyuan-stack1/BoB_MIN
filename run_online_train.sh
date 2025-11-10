@@ -1,4 +1,4 @@
-python diffusion/train.py \
+python3 diffusion/train.py \
     --mode online \
     --name online_exp_1 \
     --group my_online_tests \

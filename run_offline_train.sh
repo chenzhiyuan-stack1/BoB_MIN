@@ -1,4 +1,4 @@
-python diffusion/train.py \
+python3 diffusion/train.py \
     --mode offline \
     --name offline_exp \
     --group my_offline_tests \
