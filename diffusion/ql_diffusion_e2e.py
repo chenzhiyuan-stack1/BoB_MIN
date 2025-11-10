@@ -135,8 +135,8 @@ class Diffusion_QL(object):
             
             """ Update Critic """
             with torch.no_grad():
-                # target_q = self.critic_target.q_min(state, action)  # next action from target actor
-                target_q = self.critic.q_min(state, action)
+                target_q = self.critic_target.q_min(state, action)  # next action from target actor
+                # target_q = self.critic.q_min(state, action)
                 next_v = self.v_critic(next_state)
             v = self.v_critic(state)
             adv = target_q - v
@@ -158,7 +158,7 @@ class Diffusion_QL(object):
 
             """ Policy Training """
             with torch.no_grad():
-                qs = self.critic_target.q_min(state, action)
+                qs = self.critic_target.q_min(state, action) - self.v_critic(state)
             bc_loss = self.actor.loss(action, state, qs)
             actor_loss = bc_loss
 
