@@ -261,8 +261,8 @@ def save_dataset_as_pickle(dataset, output_path):
 
 if __name__ == '__main__':
     basedir = '/home/min414/data2/extra_storage'
-    ids = ['5']
-    output_filename = '/home/min414/data2/extra_storage/BoB_5.pickle'
+    ids = ['4', '5']
+    output_filename = '/home/min414/data2/extra_storage/BoB_45.pickle'
     final_dataset = process_results_to_dataset(basedir, ids)
     if final_dataset['observations'].shape[0] > 0:
         save_dataset_as_pickle(final_dataset, output_filename)
