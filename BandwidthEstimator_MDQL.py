@@ -171,7 +171,7 @@ class Estimator(object):
         diff_predictions = abs(int(self.bandwidth_prediction) - int(heuristic_prediction))
         average_predictions = (int(self.bandwidth_prediction) + int(heuristic_prediction)) / 2
         percentage = diff_predictions / average_predictions
-        if percentage >= 100: # 如果差异过大，信任启发式方法
+        if percentage >= 0.3: # 如果差异过大，信任启发式方法
             self.bandwidth_prediction = heuristic_prediction
             if self.delay - self.previousDelay < 200:
                 FactorH = (action_bps / (self.max_action_mbps * UNIT_M)) + 0.85
