@@ -83,6 +83,7 @@ def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: 
             replay_buffer,
             iterations=iterations,
             batch_size=args.batch_size,
+            wandb_logger=wandb if args.use_wandb else None
         )
         training_iters += iterations
         curr_epoch = int(training_iters // args.num_steps_per_epoch)

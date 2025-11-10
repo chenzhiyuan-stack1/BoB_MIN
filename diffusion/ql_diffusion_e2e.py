@@ -118,7 +118,7 @@ class Diffusion_QL(object):
             return
         self.ema.update_model_average(self.ema_model, self.actor)
 
-    def train(self, replay_buffer, iterations, batch_size=100, log_writer=None):
+    def train(self, replay_buffer, iterations, batch_size=100, log_writer=None, wandb_logger=None):
         metric = {'bc_loss': [], 'ql_loss': [], 'actor_loss': [], 'v_loss': []}
         for _ in range(iterations):
             # Sample replay buffer / batch
@@ -184,6 +184,20 @@ class Diffusion_QL(object):
                 log_writer.add_scalar('QL Loss', critic_loss.item(), self.step)
                 log_writer.add_scalar('V Loss', v_loss.item(), self.step)
                 log_writer.add_scalar('Actor Loss', actor_loss.item(), self.step)
+                
+            if wandb_logger is not None:
+                wandb_logger.log({
+                    'Train/target_q': target_q.mean().item(),
+                    'Train/next_v': next_v.mean().item(),
+                    'Train/v': v.mean().item(),
+                    'Train/q1': q1.mean().item(),
+                    'Train/q2': q2.mean().item(),
+                    'Train/qs_for_policy': qs.mean().item(),
+                    'Train/BC Loss': bc_loss.item(),
+                    'Train/QL Loss': critic_loss.item(),
+                    'Train/V Loss': v_loss.item(),
+                    'Train/Actor Loss': actor_loss.item(),
+                }, step=self.step)
 
             metric['ql_loss'].append(critic_loss.item())
             metric['v_loss'].append(v_loss.item())
