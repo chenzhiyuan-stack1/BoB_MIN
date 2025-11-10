@@ -49,7 +49,7 @@ class Estimator(object):
         )
         try:
             # 加载到正确的设备
-            self.agent.actor.load_state_dict(torch.load(model_path))
+            self.agent.actor.load_state_dict(torch.load(model_path), map_location=torch.device('cpu'))
             self.agent.actor.eval()
             logging.info(f"Successfully loaded Diffusion-QL model from: {model_path}")
         except Exception as e:
@@ -119,6 +119,10 @@ class Estimator(object):
             "packet_jitter": calculate_state.packet_jitter(self.packets_list),
             "packet_loss_ratio": calculate_state.packet_loss_ratio(self.packets_list),
         }
+        # 检查current_state_dict里的NAN情况，输出到logging.debug日志
+        for key, value in current_state_dict.items():
+            if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+                logging.debug(f"NAN or INF detected in current_state_dict for key '{key}': {value}")
         
         # --- 维护 delay 和 previousDelay ---
         self.previousDelay = self.delay
@@ -134,6 +138,10 @@ class Estimator(object):
         
         # 构建 66 维的 observation
         obs = update_and_get_observation(self.state_history, current_state_t)
+        
+        # debug几个obs
+        logging.debug(f"Observation vector: {obs}")
+        
         # 归一化并转换为 Tensor
         obs_normalized = obs * NORMAL_VECTOR
         obs_tensor = torch.tensor(obs_normalized.reshape(1, -1), dtype=torch.float32)
@@ -166,7 +174,7 @@ class Estimator(object):
         diff_predictions = abs(int(self.bandwidth_prediction) - int(heuristic_prediction))
         average_predictions = (int(self.bandwidth_prediction) + int(heuristic_prediction)) / 2
         percentage = diff_predictions / average_predictions
-        if percentage >= 0.3: # 如果差异过大，信任启发式方法
+        if percentage >= 100: # 如果差异过大，信任启发式方法
             self.bandwidth_prediction = heuristic_prediction
             if self.delay - self.previousDelay < 200:
                 FactorH = (action_bps / (self.max_action_mbps * UNIT_M)) + 0.85
