@@ -47,3 +47,6 @@ report.txt
 # ckpt
 /model/new*.pth
 /model/MDQL.pth
+
+# wandb
+/wandb/*

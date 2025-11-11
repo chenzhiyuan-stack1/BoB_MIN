@@ -8,9 +8,9 @@
 # 如果在线训练，则需要在每轮采集数据后，重新加载数据集，然后进行多次更新
 # exp的第i轮迭代
 # 呼测、采集数据
-# receive_with_tc.sh 脚本会调用agent.save_newest_model()落的ckpt进行呼测
+# receive_with_tc_train.sh 脚本会调用agent.save_newest_model()落的ckpt进行呼测
 # id结合exp和i的信息来命名，最好方便从中解析exp和i
-# 采集完之后，进行数据集转换和训练（可以修改一下receive_with_tc.sh的输出/返回，来判断采集完）
+# 采集完之后，进行数据集转换和训练（可以修改一下receive_with_tc_train.sh的输出/返回，来判断采集完）
 # 原始日志数据落在results/id 路径下
 # 参考dataset/result2dataset.py，调用里面的process_results_to_dataset、save_dataset_as_pickle将结果转换为数据集
 # 加载当前一轮的数据集
@@ -34,7 +34,8 @@ import wandb
 
 # 确保可以导入项目中的其他模块
 # 将项目根目录添加到Python路径
-sys.path.append(str(Path(__file__).parent.parent))
+# sys.path.append(str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from diffusion.ql_diffusion_e2e import Diffusion_QL as Agent
 from diffusion.utils.data_sampler import ReplayBuffer
@@ -152,7 +153,7 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
         diffusion_utils.print_banner(f"Online Round {i + 1} / {args.online_rounds}", separator="=", num_star=90)
 
         # --- Step 1: Data Collection ---
-        agent.save_newest_model(args.online_model_path) # for data collection in receive_with_tc.sh
+        agent.save_newest_model(args.online_model_path) # for data collection in receive_with_tc_train.sh
         
         # sync model to send
         # local destination: f'{args.online_model_path}/MDQL.pth'
@@ -190,16 +191,27 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
         
         collection_id = f"{Path(args.name).stem}_round_{i}"
         
-        result = subprocess.run(
-        ["bash", "receive_with_tc.sh", collection_id],
-        capture_output=True, text=True
-        )
-        if "__DATA_COLLECTION_DONE__" in result.stdout:
+        print(f"Running data collection script for ID {collection_id} ...")
+        with subprocess.Popen(
+            ["bash", "receive_with_tc_train.sh", collection_id],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        ) as proc:
+            output_lines = []
+            for line in proc.stdout:
+                print(line, end='')  # 实时打印每一行
+                output_lines.append(line)
+            proc.wait()
+            result_stdout = ''.join(output_lines)
+            
+        if "__DATA_COLLECTION_DONE__" in result_stdout:
             print("Data collection finished successfully.")
         else:
             print(f"WARNING: Data collection script did not finish as expected for ID {collection_id}.")
-            # print(f"Stdout: {result.stdout}")
-            print(f"Stderr: {result.stderr}")
+            # print(f"Stdout: {result_stdout}")
+            # print(f"Stderr: {result.stderr}")
             continue
 
         # --- Step 2: Data Processing ---
