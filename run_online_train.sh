@@ -8,4 +8,5 @@ python3 diffusion/train.py \
     --batch_size 256 \
     --lr 5e-6 \
     --offline_name test \
+    --eval_datasets /home/min414/data2/extra_storage/BoB_3.pickle \
     --use_wandb

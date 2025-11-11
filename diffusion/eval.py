@@ -50,7 +50,7 @@ def evaluate_trace(eval_dataset_paths: list):
     
     return final_mse, final_accuracy, final_over
 
-def evaluate_policy(actor, eval_dataset_paths: list, device: str):
+def evaluate_policy(actor, eval_dataset_paths: list, device: str, batch_size: int = 512):
     actor.eval() # 设置为评估模式
     every_call_mse = []
     every_call_accuracy = []
@@ -70,14 +70,22 @@ def evaluate_policy(actor, eval_dataset_paths: list, device: str):
         
         # 归一化
         observations_norm = observations * NORMAL_VECTOR
-        obs_tensor = torch.tensor(observations_norm, device=device, dtype=torch.float32)
+        
+        all_predictions = []
+        num_obs = len(observations_norm)
 
         # 2. 向量化推理：一次性获得所有动作预测
+        # 分批次进行推理
         with torch.no_grad():
-            actions_tensor = actor.sample(obs_tensor)
-        
-        # 将结果转回 numpy 并处理单位
-        model_predictions = actions_tensor.cpu().numpy().flatten() / 1e6  # 假设动作单位是 bps
+            for i in range(0, num_obs, batch_size):
+                batch_obs = observations_norm[i:i+batch_size]
+                obs_tensor = torch.tensor(batch_obs, device=device, dtype=torch.float32)
+                
+                actions_tensor = actor.sample(obs_tensor)
+                all_predictions.append(actions_tensor.cpu().numpy())
+
+        # 合并所有批次的结果
+        model_predictions = np.concatenate(all_predictions).flatten() / 1e6  # 假设动作单位是 bps
         true_bw = true_capacity / 1e6
 
         # 3. 向量化计算指标

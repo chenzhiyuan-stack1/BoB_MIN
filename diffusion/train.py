@@ -223,7 +223,7 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
             if new_dataset['observations'].shape[0] == 0:
                 print("Warning: No data points processed from this collection round. Skipping training.")
                 continue
-            pickle_name = f"/home/min414/data2/extra_storage/processed_dataset_{collection_id}.pickle"
+            pickle_name = f"/home/min414/data2/extra_storage/{Path(args.name).stem}/processed_dataset_{collection_id}.pickle"
             save_dataset_as_pickle(new_dataset, pickle_name)
             print(f"New dataset saved to {pickle_name}")
             
