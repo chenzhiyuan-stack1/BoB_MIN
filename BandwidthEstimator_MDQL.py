@@ -158,7 +158,7 @@ class Estimator(object):
         
         # 动态调整FactorH（仿照bob1）
         try:
-            FactorH = 1 - (action_bps / (self.max_action_mbps * UNIT_M)) / 2
+            FactorH = 1 - (action_bps / (self.max_action_mbps * UNIT_M)) / 2 # 动态调整FactorH
         except Exception as e:
             logging.warning(f"FactorH dynamic adjustment failed: {e}")
         
@@ -174,7 +174,7 @@ class Estimator(object):
         percentage = diff_predictions / average_predictions
         if percentage >= 0.3: # 如果差异过大，信任启发式方法
             self.bandwidth_prediction = heuristic_prediction
-            if self.delay - self.previousDelay < 200:
+            if self.delay - self.previousDelay < 200: # 延迟没有大幅增加，
                 FactorH = (action_bps / (self.max_action_mbps * UNIT_M)) + 0.85
             isHeuristicUsed = True
 
