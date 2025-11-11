@@ -40,9 +40,10 @@ from diffusion.ql_diffusion_e2e import Diffusion_QL as Agent
 from diffusion.utils.data_sampler import ReplayBuffer
 from diffusion.utils.logger import logger, setup_logger
 from diffusion.utils import utils as diffusion_utils
-from dataset.result2dataset import process_results_to_dataset, save_dataset_as_pickle
 from diffusion.norm_vector import adjust_dataset
 from diffusion.eval import evaluate_policy
+from dataset.result2dataset import process_results_to_dataset, save_dataset_as_pickle
+from utils.calculate_trace import calculate_metrics_for_collection
 
 STATE_DIM = 66
 ACTION_DIM = 1 
@@ -55,17 +56,25 @@ def set_seed(seed: int, deterministic_torch: bool = False):
     torch.manual_seed(seed)
     torch.use_deterministic_algorithms(deterministic_torch)
 
-def log_all_metrics(step: int, train_metrics: Dict[str, list], mse: float, accuracy: float, over: float, prefix: str):
+def log_all_metrics(step: int, train_metrics: Dict[str, list], mse: float, accuracy: float, over: float, prefix: str, trace_metrics: Dict = None):
     """Helper to log all aggregated training and evaluation metrics to console and WandB."""
     avg_train_metrics = {key: np.mean(val) for key, val in train_metrics.items()}
 
     diffusion_utils.print_banner(f"{prefix} Step: {step}", separator="*", num_star=90)
     logger.record_tabular(f'{prefix}/Step', step)
+    # 记录训练指标
     for key, val in avg_train_metrics.items():
         logger.record_tabular(f'Train/{key}', val)
+    # 记录评估指标
     logger.record_tabular('Eval/MSE', mse)
     logger.record_tabular('Eval/Accuracy', accuracy)
     logger.record_tabular('Eval/Overestimation', over)
+    # 记录在线交互轨迹指标
+    if trace_metrics:
+        for key, val in trace_metrics.items():
+            # 排除非数值型指标
+            if isinstance(val, (int, float)):
+                logger.record_tabular(f'Trace/{key}', val)
     logger.dump_tabular()
 
     if wandb.run:
@@ -75,6 +84,11 @@ def log_all_metrics(step: int, train_metrics: Dict[str, list], mse: float, accur
         wandb_log_data[f'{prefix}/Eval/MSE'] = mse
         wandb_log_data[f'{prefix}/Eval/Accuracy'] = accuracy
         wandb_log_data[f'{prefix}/Eval/Overestimation'] = over
+        
+        if trace_metrics:
+            for key, val in trace_metrics.items():
+                if isinstance(val, (int, float)):
+                    wandb_log_data[f'{prefix}/Trace/{key}'] = val
         wandb.log(wandb_log_data, step=step)
 
 def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: ReplayBuffer):
@@ -140,6 +154,40 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
         # --- Step 1: Data Collection ---
         agent.save_newest_model(args.online_model_path) # for data collection in receive_with_tc.sh
         
+        # sync model to send
+        # local destination: f'{args.online_model_path}/MDQL.pth'
+        # remote destination: ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN" f'{args.online_model_path}/MDQL.pth'
+        print("Syncing model to the remote sender...")
+        local_model_path = os.path.join(args.online_model_path, 'MDQL.pth')
+        remote_user_host = "knw@202.120.36.216"
+        remote_base_dir = "BoB_MIN"
+        # The destination file on the remote server will be named 'MDQL.pth'
+        remote_dest_path = f"{remote_base_dir}/{args.online_model_path}/MDQL.pth"
+        try:
+            # Construct the scp command
+            scp_command = [
+                "scp",
+                "-P", "2223",  # Note: scp uses uppercase -P for port
+                local_model_path,
+                f"{remote_user_host}:{remote_dest_path}"
+            ]
+            sync_result = subprocess.run(
+                scp_command,
+                check=True,  # This will raise an exception if scp fails
+                capture_output=True,
+                text=True
+            )
+            print("Model successfully synced to remote sender.")
+        except FileNotFoundError:
+            print(f"ERROR: 'scp' command not found. Please ensure it's installed and in your PATH.")
+            continue
+        except subprocess.CalledProcessError as e:
+            print(f"ERROR: Failed to sync model to remote sender.")
+            print(f"Command: {' '.join(e.cmd)}")
+            print(f"Return Code: {e.returncode}")
+            print(f"Stderr: {e.stderr}")
+            continue
+        
         collection_id = f"{Path(args.name).stem}_round_{i}"
         
         result = subprocess.run(
@@ -156,12 +204,27 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
 
         # --- Step 2: Data Processing ---
         print("Processing collected data into a dataset...")
+        trace_metrics = None # 初始化
         try:
+            collection_folder_path = os.path.join(args.results_basedir, collection_id)
             new_dataset = process_results_to_dataset(args.results_basedir, [collection_id])
             if new_dataset['observations'].shape[0] == 0:
                 print("Warning: No data points processed from this collection round. Skipping training.")
                 continue
-            save_dataset_as_pickle(new_dataset, f"/home/min414/data2/extra_storage/processed_dataset_{collection_id}.pickle")
+            pickle_name = f"/home/min414/data2/extra_storage/processed_dataset_{collection_id}.pickle"
+            save_dataset_as_pickle(new_dataset, pickle_name)
+            print(f"New dataset saved to {pickle_name}")
+            
+            print("Calculating performance metrics for the collected trace...")
+            # process_one_trace输入的folder_path是collection_folder_path下的一层目录
+            # 这里要遍历collection_folder_path下的所有trace文件夹，计算每个trace的指标，然后取平均
+            # 参考utils/calculate_trace.py中的main函数
+            # --- 核心改动：调用新函数计算平均性能指标 ---
+            trace_metrics = calculate_metrics_for_collection(collection_folder_path)
+            if trace_metrics:
+                print("Average trace metrics calculated successfully.")
+            else:
+                print("Warning: Failed to calculate trace metrics for this round.")
         except Exception as e:
             print(f"ERROR: Failed to process dataset for {collection_id}. Error: {e}")
             continue
@@ -185,7 +248,7 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
         mse, accuracy, over = evaluate_policy(agent.actor, args.eval_datasets, args.device)
 
         # Log metrics
-        log_all_metrics(i, loss_metric, mse, accuracy, over, prefix="Online")
+        log_all_metrics(i, loss_metric, mse, accuracy, over, prefix="Online", trace_metrics=trace_metrics)
         
         # --- Step 6: Save Model ---
         agent.save_model(args.exp_run_path, f"online_round_{i}") # for safety backup
@@ -279,7 +342,7 @@ if __name__ == "__main__":
 
     # --- Online Mode Specific ---
     parser.add_argument('--online_rounds', type=int, default=10, help="Total number of collect-train cycles")
-    parser.add_argument('--iterations_per_round', type=int, default=10000, help="Training iterations after each data collection")
+    parser.add_argument('--iterations_per_round', type=int, default=1000, help="Training iterations after each data collection")
     parser.add_argument('--results_basedir', type=str, default="results", help="Base directory for raw log data")
     parser.add_argument('--online_model_path', type=str, default="model", help="Base directory for online model checkpoints")
     parser.add_argument('--offline_name', type=str, default="251105234045_offline_exp_offline_400a", help="Offline experiment name for initializing online training")

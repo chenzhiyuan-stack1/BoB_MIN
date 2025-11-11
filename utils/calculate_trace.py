@@ -48,9 +48,11 @@ import json
 import numpy as np
 from collections import defaultdict
 from tqdm import tqdm
+import pandas as pd
 
 TC_PROFILE_DIR = '/home/min414/data2/BoB_MIN/tc_profiles'
 
+# ... (parse_unit, parse_tc_profile, get_tc_params_over_time, get_tc_profile_and_strategy 函数保持不变) ...
 def parse_unit(value_str):
     value_str = str(value_str).lower().strip()
     if 'kbit' in value_str:
@@ -129,23 +131,24 @@ def get_tc_profile_and_strategy(folder_path):
                 return parts[-1], parts[2]
     return None, None
 
-def process_one_trace(folder_path, pbar=None):
+def process_one_trace(folder_path, use_tqdm=False):
+    """处理单个trace文件夹并返回指标字典。"""
     data_file = os.path.join(folder_path, 'data.jsonl')
     if not os.path.isfile(data_file):
-        if pbar: pbar.update(1)
         return None
     tc_profile_name, strategy = get_tc_profile_and_strategy(folder_path)
     if not tc_profile_name or not strategy:
-        if pbar: pbar.update(1)
         return None
     profile_path = os.path.join(TC_PROFILE_DIR, tc_profile_name)
     commands = parse_tc_profile(profile_path)
-    # 读取data.jsonl
+    
     times, receiving_rates, packet_loss_ratios, delay_avg_min_diffs = [], [], [], []
     try:
         with open(data_file, 'r') as f:
             lines = f.readlines()
-        for line in tqdm(lines, desc=f"Processing {os.path.basename(folder_path)}", leave=False):
+        
+        line_iterator = tqdm(lines, desc=f"Parsing {os.path.basename(folder_path)}", leave=False) if use_tqdm else lines
+        for line in line_iterator:
             try:
                 d = json.loads(line)
                 state = d.get('state', {})
@@ -157,21 +160,26 @@ def process_one_trace(folder_path, pbar=None):
                 delay_avg_min_diffs.append(float(state.get('delay_avg_min_diff', 0)))
             except Exception:
                 continue
-    finally:
-        if pbar: pbar.update(1)
+    except Exception:
+        return None
+
     if not times:
         return None
+        
     base_time = times[0]
     times_sec = [(t - base_time) / 1000.0 for t in times]
     tc_rates, tc_losses, tc_delays = get_tc_params_over_time(commands, times_sec)
+    
     receiving_rates_mbps = np.array(receiving_rates) / 1e6
     tc_rates_mbps = np.array(tc_rates) / 1e6
+    
     mse = np.mean((receiving_rates_mbps - tc_rates_mbps) ** 2)
     avg_loss = np.mean(packet_loss_ratios)
     avg_delay = np.mean(delay_avg_min_diffs)
     avg_tc_loss = np.mean(tc_losses)
     avg_tc_delay = np.mean(tc_delays)
-    avg_receiving_rate = np.mean(receiving_rates_mbps)  # 新增：平均receiving_rate（Mbps）
+    avg_receiving_rate = np.mean(receiving_rates_mbps)
+    
     return {
         'strategy': strategy,
         'tc_profile': tc_profile_name,
@@ -180,46 +188,74 @@ def process_one_trace(folder_path, pbar=None):
         'avg_delay': avg_delay,
         'avg_tc_loss': avg_tc_loss,
         'avg_tc_delay': avg_tc_delay,
-        'avg_receiving_rate': avg_receiving_rate,  # 新增
+        'avg_receiving_rate': avg_receiving_rate,
     }
 
+def calculate_metrics_for_collection(collection_path):
+    """
+    遍历一个集合文件夹中的所有trace，计算并返回平均性能指标。
+    :param collection_path: 包含多个trace子文件夹的路径。
+    :return: 一个包含平均指标的字典，如果无数据则返回None。
+    """
+    if not os.path.isdir(collection_path):
+        print(f"Warning: Collection path not found: {collection_path}")
+        return None
+
+    all_trace_folders = [f for f in os.listdir(collection_path) if os.path.isdir(os.path.join(collection_path, f))]
+    
+    if not all_trace_folders:
+        print(f"Warning: No trace folders found in {collection_path}")
+        return None
+
+    all_results = []
+    for folder in all_trace_folders:
+        folder_path = os.path.join(collection_path, folder)
+        # 调用 process_one_trace 时禁用内部进度条
+        res = process_one_trace(folder_path, use_tqdm=False)
+        if res:
+            all_results.append(res)
+
+    if not all_results:
+        print(f"Warning: No valid traces could be processed in {collection_path}")
+        return None
+
+    # 使用pandas来方便地计算平均值
+    df = pd.DataFrame(all_results)
+    # 计算所有数值列的平均值
+    mean_metrics = df.select_dtypes(include=np.number).mean().to_dict()
+    
+    return mean_metrics
+
 def main(input_path, report_file):
+    # ... (main 函数保持不变，它用于独立的报告生成) ...
     results = defaultdict(list)
     folders = [f for f in sorted(os.listdir(input_path)) if os.path.isdir(os.path.join(input_path, f))]
     with tqdm(total=len(folders), desc=f"Traces in {input_path}") as pbar:
         for folder in folders:
             folder_path = os.path.join(input_path, folder)
-            res = process_one_trace(folder_path, pbar)
+            # 在这里调用时，可以保留tqdm，因为它是在脚本独立运行时的主循环
+            res = process_one_trace(folder_path, use_tqdm=True)
             if res:
                 key = (res['strategy'], res['tc_profile'])
                 results[key].append(res)
+            pbar.update(1)
+            
     with open(report_file, 'a') as fout:
         fout.write(f"\n==== Results for {input_path} ====\n")
         fout.write("strategy,tc_profile,mse,avg_loss,avg_delay,avg_tc_loss,avg_tc_delay,avg_receiving_rate\n")
         for key, group in results.items():
             strategy, tc_profile = key
-            mse = np.mean([x['mse'] for x in group])
-            avg_loss = np.mean([x['avg_loss'] for x in group])
-            avg_delay = np.mean([x['avg_delay'] for x in group])
-            avg_tc_loss = np.mean([x['avg_tc_loss'] for x in group])
-            avg_tc_delay = np.mean([x['avg_tc_delay'] for x in group])
-            avg_receiving_rate = np.mean([x['avg_receiving_rate'] for x in group])  # 新增
-            fout.write(f"{strategy},{tc_profile},{mse:.6f},{avg_loss:.6f},{avg_delay:.6f},{avg_tc_loss:.6f},{avg_tc_delay:.6f},{avg_receiving_rate:.6f}\n")
-
+            df = pd.DataFrame(group)
+            mean_values = df.select_dtypes(include=np.number).mean()
+            fout.write(f"{strategy},{tc_profile}," + ",".join([f"{v:.6f}" for v in mean_values.values]) + "\n")
 
 if __name__ == '__main__':
-    import sys
-    # 支持多个 test_id
-    # if len(sys.argv) < 2:
-    #     print("Usage: python calculate_trace.py <test_id1> [<test_id2> ...]")
-    #     exit(1)
+    # ... (主程序入口保持不变) ...
     basedir = '/home/min414/data2/extra_storage'
     ids = ['0','1','2','3','4','5',]
     report_file = 'report.txt'
-    # 清空旧报告
     with open(report_file, 'w') as fout:
         fout.write('')
-    # for test_id in sys.argv[1:]:
     for test_id in ids:
         input_path = os.path.join(basedir, test_id)
         main(input_path, report_file)
