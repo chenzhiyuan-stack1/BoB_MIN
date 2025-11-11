@@ -41,7 +41,12 @@ def queuing_delay(packets_list, min_seen_delay):
         return 0
     delays = [pkt.receive_timestamp - pkt.send_timestamp for pkt in packets_list]
     avg_delay = sum(delays) / len(delays)
-    return avg_delay - min_seen_delay if min_seen_delay is not None else 0
+    
+    result = avg_delay - min_seen_delay if min_seen_delay is not None else 0
+    
+    if math.isnan(result) or math.isinf(result):
+        return 0
+    return result
 
 # 5. Delay (avg delay - base delay) 没啥用
 # Delay: average delay of packets received in a MI minus a fixed base delay of 200ms, unit: ms.

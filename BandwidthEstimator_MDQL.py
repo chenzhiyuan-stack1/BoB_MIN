@@ -117,9 +117,10 @@ class Estimator(object):
             "packet_loss_ratio": calculate_state.packet_loss_ratio(self.packets_list),
         }
         # 检查current_state_dict里的NAN情况，输出到logging.debug日志
-        for key, value in current_state_dict.items():
-            if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
-                logging.debug(f"NAN or INF detected in current_state_dict for key '{key}': {value}")
+        # for debug
+        # for key, value in current_state_dict.items():
+        #     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        #         logging.debug(f"NAN or INF detected in current_state_dict for key '{key}': {value}")
         
         # --- 维护 delay 和 previousDelay ---
         self.previousDelay = self.delay
@@ -137,7 +138,7 @@ class Estimator(object):
         obs = update_and_get_observation(self.state_history, current_state_t)
         
         # debug几个obs
-        logging.debug(f"Observation vector: {obs}")
+        # logging.debug(f"Observation vector: {obs}")
         
         # 归一化并转换为 Tensor
         obs_normalized = obs * NORMAL_VECTOR
