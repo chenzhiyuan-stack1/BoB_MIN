@@ -169,7 +169,7 @@ def get_tc_profile_name(folder_path):
 
 def plot_trace(data_file, save_dir):
     """使用 Plotly 读取data.jsonl并生成五合一的性能图"""
-    times, receiving_rates, bandwidth_estimations, packet_loss_ratios, delay_avg_min_diffs = [], [], [], [], []
+    times, receiving_rates, bandwidth_estimations, packet_loss_ratios, delay_avg_min_diffs, is_heuristic_flags = [], [], [], [], [], []
 
     def to_numeric(value):
         if isinstance(value, (int, float)): return float(value)
@@ -187,6 +187,8 @@ def plot_trace(data_file, save_dir):
                 bandwidth_estimations.append(to_numeric(action.get('bandwidth_estimation')))
                 packet_loss_ratios.append(to_numeric(state.get('packet_loss_ratio')))
                 delay_avg_min_diffs.append(to_numeric(state.get('delay_avg_min_diff')))
+                # --- 核心改动：从 state 字段提取 isHeuristicUsed ---
+                is_heuristic_flags.append(state.get('isHeuristicUsed', False))
             except (json.JSONDecodeError, KeyError, IndexError): continue
 
     if not times:
@@ -206,7 +208,49 @@ def plot_trace(data_file, save_dir):
 
     # 子图1: 带宽
     fig.add_trace(go.Scatter(x=times_sec, y=np.array(receiving_rates) / 1e6, name='Receiving Rate', mode='lines', line=dict(color='dodgerblue', width=2)), row=1, col=1)
-    fig.add_trace(go.Scatter(x=times_sec, y=np.array(bandwidth_estimations) / 1e6, name='Bandwidth Estimation', mode='lines', line=dict(color='darkorange', width=2, dash='dash')), row=1, col=1)
+    
+    # --- 分段绘制 Bandwidth Estimation ---
+    # 将数据按 isHeuristicUsed 分割成连续的段
+    segments = []
+    if times_sec:
+        current_segment = {'times': [], 'values': [], 'is_heuristic': is_heuristic_flags[0]}
+        for i in range(len(times_sec)):
+            if is_heuristic_flags[i] == current_segment['is_heuristic']:
+                current_segment['times'].append(times_sec[i])
+                current_segment['values'].append(bandwidth_estimations[i])
+            else:
+                # 为了线段连续，将当前点也作为上一个线段的终点
+                current_segment['times'].append(times_sec[i])
+                current_segment['values'].append(bandwidth_estimations[i])
+                segments.append(current_segment)
+                # 开始新线段
+                current_segment = {'times': [times_sec[i]], 'values': [bandwidth_estimations[i]], 'is_heuristic': is_heuristic_flags[i]}
+        segments.append(current_segment) # 添加最后一个线段
+
+    # 绘制每个分段
+    heuristic_legend_added = False
+    non_heuristic_legend_added = False
+    for seg in segments:
+        if seg['is_heuristic']:
+            name = 'BWE (Heuristic)'
+            color = 'darkorange'
+            show_legend = not heuristic_legend_added
+            heuristic_legend_added = True
+        else:
+            name = 'BWE (Model)'
+            color = 'purple'
+            show_legend = not non_heuristic_legend_added
+            non_heuristic_legend_added = True
+        
+        fig.add_trace(go.Scatter(
+            x=seg['times'], 
+            y=np.array(seg['values']) / 1e6, 
+            name=name, 
+            mode='lines', 
+            line=dict(color=color, width=2, dash='dash'),
+            legendgroup=name,
+            showlegend=show_legend
+        ), row=1, col=1)
 
     # 子图2: 端到端丢包率
     fig.add_trace(go.Scatter(x=times_sec, y=packet_loss_ratios, name='E2E Packet Loss Ratio', mode='lines', line=dict(color='crimson', width=2)), row=2, col=1)
@@ -221,32 +265,27 @@ def plot_trace(data_file, save_dir):
             commands = parse_tc_profile(profile_path)
             if commands:
                 tc_times, tc_rates, tc_losses, tc_delays = get_tc_params_over_time(commands, total_duration)
-                # --- 关键修改：截断TC数据以匹配 receiving_rates 的时间轴 ---
                 if tc_times:
-                    # 找到第一个超出 total_duration 的时间点索引
                     truncate_idx = len(tc_times)
                     for i, t in enumerate(tc_times):
                         if t > total_duration:
                             truncate_idx = i
                             break
                     
-                    # 截断所有TC数据数组
                     tc_times_truncated = tc_times[:truncate_idx]
                     tc_rates_truncated = tc_rates[:truncate_idx]
                     tc_losses_truncated = tc_losses[:truncate_idx]
                     tc_delays_truncated = tc_delays[:truncate_idx]
 
-                    # 确保最后一点与 total_duration 对齐
                     if tc_times_truncated and tc_times_truncated[-1] < total_duration:
                         tc_times_truncated.append(total_duration)
                         tc_rates_truncated.append(tc_rates_truncated[-1])
                         tc_losses_truncated.append(tc_losses_truncated[-1])
                         tc_delays_truncated.append(tc_delays_truncated[-1])
 
-                    # 使用截断后的数据绘图
                     fig.add_trace(go.Scatter(x=tc_times_truncated, y=np.array(tc_rates_truncated) / 1e6, name='TC Rate', mode='lines', line=dict(color='green', width=2.5, dash='dot', shape='hv')), row=1, col=1)
                     fig.add_trace(go.Scatter(x=tc_times_truncated, y=tc_losses_truncated, name='TC Loss', mode='lines', line=dict(color='red', width=2.5, dash='dot', shape='hv')), row=4, col=1)
-                    fig.add_trace(go.Scatter(x=tc_times_truncated, y=tc_delays_truncated, name='TC Delay', mode='lines', line=dict(color='saddlebrown', width=2.5, dash='dot', shape='hv')), row=5, col=1)
+                    fig.add_trace(go.Scatter(x=tc_times_truncated, y=np.array(tc_delays) * 1000, name='TC Delay', mode='lines', line=dict(color='saddlebrown', width=2.5, dash='dot', shape='hv')), row=5, col=1)
 
     # 更新图表布局
     fig.update_layout(
@@ -255,22 +294,18 @@ def plot_trace(data_file, save_dir):
         legend_traceorder="reversed",
         template="plotly_white"
     )
-    # 通过不设置 'range' 参数，Plotly会自动调整范围
     fig.update_yaxes(title_text="Rate (Mbps)", autorange=True, row=1, col=1)
     fig.update_yaxes(title_text="Loss Ratio", autorange=True, row=2, col=1)
     fig.update_yaxes(title_text="Delay (ms)", autorange=True, row=3, col=1)
     fig.update_yaxes(title_text="TC Loss Ratio", autorange=True, row=4, col=1)
     fig.update_yaxes(title_text="TC Delay (ms)", autorange=True, row=5, col=1)
 
-    # 强制从0开始的坐标轴看起来更直观
-    fig.update_yaxes(rangemode="tozero", row=1, col=1) # 带宽
-    fig.update_yaxes(rangemode="tozero", row=3, col=1) # 延迟
-    fig.update_yaxes(rangemode="tozero", row=5, col=1) # TC延迟
+    fig.update_yaxes(rangemode="tozero", row=1, col=1)
+    fig.update_yaxes(rangemode="tozero", row=3, col=1)
+    fig.update_yaxes(rangemode="tozero", row=5, col=1)
 
-    # 更新X轴标签
     fig.update_xaxes(title_text="Time (s)", row=5, col=1)
 
-    # 保存为静态图片
     plot_file = os.path.join(save_dir, 'trace_plot.png')
     fig.write_image(plot_file, width=1600, height=1200, scale=1)
     print(f"  Plot saved to {os.path.basename(plot_file)}")
@@ -312,4 +347,3 @@ if __name__ == '__main__':
             print(f"  [ERROR] Failed to plot for {folder}: {e}")
 
     print("--- Done ---")
-    
