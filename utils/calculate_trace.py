@@ -193,9 +193,9 @@ def process_one_trace(folder_path, use_tqdm=False):
 
 def calculate_metrics_for_collection(collection_path):
     """
-    遍历一个集合文件夹中的所有trace，计算并返回平均性能指标。
+    遍历一个集合文件夹中的所有trace，按 (strategy, tc_profile) 分组计算并返回平均性能指标。
     :param collection_path: 包含多个trace子文件夹的路径。
-    :return: 一个包含平均指标的字典，如果无数据则返回None。
+    :return: 一个字典，键为 'strategy_tc_profile'，值为包含平均指标的字典。
     """
     if not os.path.isdir(collection_path):
         print(f"Warning: Collection path not found: {collection_path}")
@@ -207,24 +207,31 @@ def calculate_metrics_for_collection(collection_path):
         print(f"Warning: No trace folders found in {collection_path}")
         return None
 
-    all_results = []
+    # 使用 defaultdict 来按 (strategy, tc_profile) 分组
+    grouped_results = defaultdict(list)
     for folder in all_trace_folders:
         folder_path = os.path.join(collection_path, folder)
-        # 调用 process_one_trace 时禁用内部进度条
         res = process_one_trace(folder_path, use_tqdm=False)
         if res:
-            all_results.append(res)
+            # 创建分组的键
+            key = (res['strategy'], res['tc_profile'])
+            grouped_results[key].append(res)
 
-    if not all_results:
+    if not grouped_results:
         print(f"Warning: No valid traces could be processed in {collection_path}")
         return None
 
-    # 使用pandas来方便地计算平均值
-    df = pd.DataFrame(all_results)
-    # 计算所有数值列的平均值
-    mean_metrics = df.select_dtypes(include=np.number).mean().to_dict()
+    # 计算每个组的平均指标
+    final_metrics = {}
+    for (strategy, tc_profile), results_list in grouped_results.items():
+        df = pd.DataFrame(results_list)
+        mean_values = df.select_dtypes(include=np.number).mean().to_dict()
+        
+        # 使用 "strategy_tc_profile" 作为最终的键
+        final_key = f"{strategy}_{tc_profile}"
+        final_metrics[final_key] = mean_values
     
-    return mean_metrics
+    return final_metrics
 
 def main(input_path, report_file):
     # ... (main 函数保持不变，它用于独立的报告生成) ...

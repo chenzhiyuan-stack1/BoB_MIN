@@ -70,26 +70,37 @@ def log_all_metrics(step: int, train_metrics: Dict[str, list], mse: float, accur
     logger.record_tabular('Eval/MSE', mse)
     logger.record_tabular('Eval/Accuracy', accuracy)
     logger.record_tabular('Eval/Overestimation', over)
-    # 记录在线交互轨迹指标
+    
+    # --- 核心改动：处理分组后的性能指标 ---
     if trace_metrics:
-        for key, val in trace_metrics.items():
-            # 排除非数值型指标
-            if isinstance(val, (int, float)):
-                logger.record_tabular(f'Trace/{key}', val)
+        # trace_metrics 的结构是 {'strategy_profile': {'mse': val, ...}}
+        for group_name, metrics_dict in trace_metrics.items():
+            for metric_name, metric_val in metrics_dict.items():
+                if isinstance(metric_val, (int, float)):
+                    # 在控制台日志中记录
+                    logger.record_tabular(f'Trace/{group_name}/{metric_name}', metric_val)
+
     logger.dump_tabular()
 
     if wandb.run:
         wandb_log_data = {}
+        # 添加训练指标
         for key, val in avg_train_metrics.items():
             wandb_log_data[f'{prefix}/Train/{key}'] = val
+        # 添加评估指标
         wandb_log_data[f'{prefix}/Eval/MSE'] = mse
         wandb_log_data[f'{prefix}/Eval/Accuracy'] = accuracy
         wandb_log_data[f'{prefix}/Eval/Overestimation'] = over
         
+        # --- 核心改动：将分组后的性能指标添加到 wandb 日志 ---
         if trace_metrics:
-            for key, val in trace_metrics.items():
-                if isinstance(val, (int, float)):
-                    wandb_log_data[f'{prefix}/Trace/{key}'] = val
+            for group_name, metrics_dict in trace_metrics.items():
+                for metric_name, metric_val in metrics_dict.items():
+                    if isinstance(metric_val, (int, float)):
+                        # 构造 wandb 的 key，例如 'Online/Trace/bob1_bad4G/mse'
+                        wandb_key = f'{prefix}/Trace/{group_name}/{metric_name}'
+                        wandb_log_data[wandb_key] = metric_val
+
         wandb.log(wandb_log_data, step=step)
 
 def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: ReplayBuffer):
