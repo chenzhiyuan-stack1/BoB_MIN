@@ -140,7 +140,7 @@ class Diffusion_QL(object):
                 next_v = self.v_critic(next_state)
             v = self.v_critic(state)
             adv = target_q - v
-            v_loss = asymmetric_l2_loss(adv, 0.7)
+            v_loss = asymmetric_l2_loss(adv, 0.9)
             self.v_critic_optimizer.zero_grad(set_to_none=True)
             v_loss.backward()
             self.v_critic_optimizer.step()
