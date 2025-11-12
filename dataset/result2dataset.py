@@ -222,14 +222,27 @@ def process_results_to_dataset(basedir, ids, state_window_size=6):
                 packet_loss_ratio = state_dict.get('packet_loss_ratio', 0.0)
                 receiving_rate = state_dict.get('receiving_rate', 0.0)
 
-                # 如果 queuing_delay 不是有限数，则该项为0
-                queuing_delay_term = (queuing_delay / 100.0) if np.isfinite(queuing_delay) else 0.0
+                # 1. 延迟惩罚项：以 500ms 为基准，并限制最大惩罚为 -1.0
+                # 500ms 约等于数据分布的 75% 分位数
+                # 过滤掉负延迟，因为它们是无效数据
+                queuing_delay_term = 0.0
+                if np.isfinite(queuing_delay) and queuing_delay > 0:
+                    queuing_delay_term = min(queuing_delay / 500.0, 1.0)
                 
-                # 为稳健起见，也检查其他项
-                packet_loss_term = (5.0 * packet_loss_ratio) if np.isfinite(packet_loss_ratio) else 0.0
-                receiving_rate_term = (receiving_rate / 1000000.0) if np.isfinite(receiving_rate) else 0.0
+                # 2. 丢包惩罚项：乘数 6.0 基于 17% (95%分位数) 的丢包率
+                packet_loss_term = 0.0
+                if np.isfinite(packet_loss_ratio):
+                    packet_loss_term = min(6.0 * packet_loss_ratio, 1.0) # 同样限制最大惩罚
                 
-                reward = - (queuing_delay_term + packet_loss_term) + receiving_rate_term
+                # 3. 吞吐量奖励项：以 1.2 Mbps 为基准
+                # 1.2 Mbps 约等于数据分布的 95% 分位数
+                receiving_rate_term = 0.0
+                if np.isfinite(receiving_rate):
+                    receiving_rate_term = receiving_rate / 1200000.0
+                
+                # 最终奖励 = 吞吐量奖励 - 延迟惩罚 - 丢包惩罚
+                # 这个值理论上大致在 [-2, 1+] 范围内，但绝大部分会在 [-1, 1] 内
+                reward = receiving_rate_term - queuing_delay_term - packet_loss_term
                 
                 terminal = 1 if (i == num_steps - 1) else 0
 

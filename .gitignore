@@ -50,3 +50,5 @@ report.txt
 
 # wandb
 /wandb/*
+
+*html
