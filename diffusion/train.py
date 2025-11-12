@@ -168,10 +168,10 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
         
         # sync model to send
         # local destination: f'{args.online_model_path}/MDQL.pth'
-        # remote destination: ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN" f'{args.online_model_path}/MDQL.pth'
+        # remote destination: ssh -p 2223 knw@202.120.36.33 "cd BoB_MIN" f'{args.online_model_path}/MDQL.pth'
         print("Syncing model to the remote sender...")
         local_model_path = os.path.join(args.online_model_path, 'MDQL.pth')
-        remote_user_host = "knw@202.120.36.216"
+        remote_user_host = "knw@202.120.36.33"
         remote_base_dir = "BoB_MIN"
         # The destination file on the remote server will be named 'MDQL.pth'
         remote_dest_path = f"{remote_base_dir}/{args.online_model_path}/MDQL.pth"
