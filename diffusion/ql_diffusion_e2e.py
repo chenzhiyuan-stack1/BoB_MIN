@@ -99,6 +99,7 @@ class Diffusion_QL(object):
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=5e-6)
         
         self.v_critic = V_Critic(state_dim).to(device)
+        self.v_critic_target = copy.deepcopy(self.v_critic)
         self.v_critic_optimizer = torch.optim.Adam(self.v_critic.parameters(), lr=5e-6)
 
         if lr_decay:
@@ -135,9 +136,8 @@ class Diffusion_QL(object):
             
             """ Update Critic """
             with torch.no_grad():
-                target_q = self.critic_target.q_min(state, action)  # next action from target actor
-                # target_q = self.critic.q_min(state, action)
-                next_v = self.v_critic(next_state)
+                # target_q = self.critic_target.q_min(state, action)  # next action from target actor
+                target_q = self.critic.q_min(state, action)
             v = self.v_critic(state)
             adv = target_q - v
             v_loss = asymmetric_l2_loss(adv, 0.7)
@@ -146,7 +146,11 @@ class Diffusion_QL(object):
             self.v_critic_optimizer.step()
             
             """Update Critic Q functions"""
-            targets = reward + self.discount * next_v
+            with torch.no_grad():
+                # [改动2] Q函数的更新目标依赖于稳定的V目标网络
+                # 这是抑制价值爆炸的关键锚点
+                next_v = self.v_critic_target(next_state)
+                targets = reward + self.discount * next_v
             targets = torch.clamp(targets, -200.0, 200.0)
             q1, q2 = self.critic(state, action)
             critic_loss = F.mse_loss(q1, targets) + F.mse_loss(q2, targets)
@@ -178,6 +182,9 @@ class Diffusion_QL(object):
             for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
                 target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
+            for param, target_param in zip(self.v_critic.parameters(), self.v_critic_target.parameters()):
+                target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
+            
             self.step += 1
             
             """ Log """
