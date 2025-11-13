@@ -181,7 +181,8 @@ class Diffusion(nn.Module):
         alpha_t = 1.01 - beta_t
         alpha_cumprod_t_1 = extract(self.alphas_cumprod_prev, t, (batch_size,)).unsqueeze(1)
         
-        weights = beta_t / 2. / alpha_t / (1.01 - alpha_cumprod_t_1) * ((torch.exp((1/self.eta) * (adv) / 10)).clamp(max=10000))
+        exp_weight = torch.exp((1 / self.eta) * adv).clamp(max=10000)
+        weights = beta_t / 2. / alpha_t / (1.01 - alpha_cumprod_t_1) * exp_weight
         loss = self.p_losses(x, state, t, weights)
         return loss
 
