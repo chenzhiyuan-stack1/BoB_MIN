@@ -140,13 +140,14 @@ class Diffusion_QL(object):
                 next_v = self.v_critic(next_state)
             v = self.v_critic(state)
             adv = target_q - v
-            v_loss = asymmetric_l2_loss(adv, 0.8)
+            v_loss = asymmetric_l2_loss(adv, 0.7)
             self.v_critic_optimizer.zero_grad(set_to_none=True)
             v_loss.backward()
             self.v_critic_optimizer.step()
             
             """Update Critic Q functions"""
             targets = reward + self.discount * next_v
+            targets = torch.clamp(targets, -200.0, 200.0)
             q1, q2 = self.critic(state, action)
             critic_loss = F.mse_loss(q1, targets) + F.mse_loss(q2, targets)
             self.critic_optimizer.zero_grad(set_to_none=True)
@@ -158,8 +159,9 @@ class Diffusion_QL(object):
 
             """ Policy Training """
             with torch.no_grad():
-                qs = self.critic_target.q_min(state, action) - self.v_critic(state)
-            bc_loss = self.actor.loss(action, state, qs)
+                # adv = self.critic_target.q_min(state, action) - self.v_critic(state)
+                adv = self.critic.q_min(state, action) - self.v_critic(state)
+            bc_loss = self.actor.loss(action, state, adv)
             actor_loss = bc_loss
 
             self.actor_optimizer.zero_grad()

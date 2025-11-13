@@ -238,7 +238,7 @@ def process_results_to_dataset(basedir, ids, state_window_size=6):
                 # 1.2 Mbps 约等于数据分布的 95% 分位数
                 receiving_rate_term = 0.0
                 if np.isfinite(receiving_rate):
-                    receiving_rate_term = receiving_rate / 1200000.0
+                    receiving_rate_term = min(receiving_rate / 1200000.0, 1.5)
                 
                 # 最终奖励 = 吞吐量奖励 - 延迟惩罚 - 丢包惩罚
                 # 这个值理论上大致在 [-2, 1+] 范围内，但绝大部分会在 [-1, 1] 内

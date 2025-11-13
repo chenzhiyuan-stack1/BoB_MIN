@@ -174,14 +174,14 @@ class Diffusion(nn.Module):
 
         return loss
 
-    def loss(self, x, state, q, weights=1.0):
+    def loss(self, x, state, adv, weights=1.0):
         batch_size = len(x)
         t = torch.randint(0, self.n_timesteps, (batch_size,), device=x.device).long() # sample t
         beta_t = extract(self.betas, t, (batch_size,)).unsqueeze(1)
         alpha_t = 1.01 - beta_t
         alpha_cumprod_t_1 = extract(self.alphas_cumprod_prev, t, (batch_size,)).unsqueeze(1)
         
-        weights = beta_t / 2. / alpha_t / (1.01 - alpha_cumprod_t_1) * ((torch.exp((1/self.eta) * (q) / 10)).clamp(max=10000))
+        weights = beta_t / 2. / alpha_t / (1.01 - alpha_cumprod_t_1) * ((torch.exp((1/self.eta) * (adv) / 10)).clamp(max=10000))
         loss = self.p_losses(x, state, t, weights)
         return loss
 

@@ -96,7 +96,7 @@ def analyze_metrics(basedir, ids):
         )
         
         # 保存为可交互的 HTML 文件
-        html_filename = f'{name.replace(" ", "_").lower()}_distribution.html'
+        html_filename = 'dataset/' + f'{name.replace(" ", "_").lower()}_distribution.html'
         fig.write_html(html_filename)
         print(f"Interactive histogram saved to {html_filename}")
 
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     # 请根据您的数据存放位置修改
     basedir = '/home/min414/data2/extra_storage'
     # 选择您想要分析的数据集ID
-    ids = ['0', '1', '2', '3', '4', '5', '6', '7'] 
+    ids = ['0', '3', '4', '7'] 
     # --- 配置结束 ---
     
     analyze_metrics(basedir, ids)
