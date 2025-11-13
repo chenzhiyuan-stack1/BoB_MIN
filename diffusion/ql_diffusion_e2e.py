@@ -122,7 +122,8 @@ class Diffusion_QL(object):
     def train(self, replay_buffer, iterations, batch_size=100):
         metric = {
             'bc_loss': [], 'ql_loss': [], 'actor_loss': [], 'v_loss': [],
-            'target_q': [], 'next_v': [], 'v': [], 'q1': [], 'q2': [], 'adv_for_policy': []
+            'target_q': [], 'next_v': [], 'v': [], 'q1': [], 'q2': [],
+            'adv_mean': [], 'adv_std': []
         }
         for _ in range(iterations):
             # Sample replay buffer / batch
@@ -199,7 +200,8 @@ class Diffusion_QL(object):
             metric['v'].append(v.mean().item())
             metric['q1'].append(q1.mean().item())
             metric['q2'].append(q2.mean().item())
-            metric['adv_for_policy'].append(adv.mean().item())
+            metric['adv_mean'].append(adv.mean().item())
+            metric['adv_std'].append(adv.std().item())
 
         if self.lr_decay: 
             self.actor_lr_scheduler.step()
