@@ -190,7 +190,7 @@ class Diffusion_QL(object):
             metric['v'].append(v.mean().item())
             metric['q1'].append(q1.mean().item())
             metric['q2'].append(q2.mean().item())
-            metric['qs_for_policy'].append(qs.mean().item())
+            metric['adv_for_policy'].append(adv.mean().item())
 
         if self.lr_decay: 
             self.actor_lr_scheduler.step()
