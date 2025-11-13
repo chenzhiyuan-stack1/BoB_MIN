@@ -116,26 +116,35 @@ def evaluate_policy(actor, eval_dataset_paths: list, device: str, batch_size: in
 if __name__ == "__main__":
     # --- 示例：如何调用新的 evaluate_policy ---
     
-    # 1. 加载你的模型 (这里只是一个示例结构)
-    from diffusion.ql_diffusion_e2e import Diffusion_QL
-    STATE_DIM = 66
-    ACTION_DIM = 1
-    MAX_ACTION = 20.0
-    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    # # 1. 加载你的模型 (这里只是一个示例结构)
+    # from diffusion.ql_diffusion_e2e import Diffusion_QL
+    # STATE_DIM = 66
+    # ACTION_DIM = 1
+    # MAX_ACTION = 20.0
+    # DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     
-    agent = Diffusion_QL(state_dim=STATE_DIM, action_dim=ACTION_DIM, max_action=MAX_ACTION, device=DEVICE, discount=0.99, tau=0.005)
-    agent.load_model('results_exp/test', id='10')
+    # agent = Diffusion_QL(state_dim=STATE_DIM, action_dim=ACTION_DIM, max_action=MAX_ACTION, device=DEVICE, discount=0.99, tau=0.005)
+    # agent.load_model('results_exp/test', id='10')
     
-    # 2. 定义评估数据集
+    # # 2. 定义评估数据集
+    # eval_paths = [
+    #     '/home/min414/data2/extra_storage/BoB_3.pickle',
+    # ]
+
+    # # 3. 调用评估函数
+    # mse, accuracy, over = evaluate_policy(agent.actor, eval_paths, DEVICE)
+    # print(f"\nPolicy Evaluation Results -- MSE: {mse:.4f}, Accuracy: {accuracy:.4f}, Over-Provision: {over:.4f}")
+
+    # # --- 运行 evaluate_trace ---
+    # print("--- Running Trace Evaluation ---")
+    # mse_trace, acc_trace, over_trace = evaluate_trace(eval_paths)
+    # print(f"\nTrace Evaluation Results -- MSE: {mse_trace:.4f}, Accuracy: {acc_trace:.4f}, Over-Provision: {over_trace:.4f}")
+
+    
+    # --- 示例：如何调用新的 evaluate_trace ---
     eval_paths = [
         '/home/min414/data2/extra_storage/BoB_3.pickle',
     ]
-
-    # 3. 调用评估函数
-    mse, accuracy, over = evaluate_policy(agent.actor, eval_paths, DEVICE)
-    print(f"\nPolicy Evaluation Results -- MSE: {mse:.4f}, Accuracy: {accuracy:.4f}, Over-Provision: {over:.4f}")
-
-    # --- 运行 evaluate_trace ---
-    print("--- Running Trace Evaluation ---")
     mse_trace, acc_trace, over_trace = evaluate_trace(eval_paths)
     print(f"\nTrace Evaluation Results -- MSE: {mse_trace:.4f}, Accuracy: {acc_trace:.4f}, Over-Provision: {over_trace:.4f}")
+    
