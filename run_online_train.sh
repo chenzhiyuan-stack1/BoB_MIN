@@ -7,6 +7,6 @@ python3 diffusion/train.py \
     --iterations_per_round 1000 \
     --batch_size 256 \
     --lr 5e-6 \
-    --offline_name test \
+    --offline_name test1 \
     --eval_datasets /home/min414/data2/extra_storage/BoB_3.pickle \
     --use_wandb
