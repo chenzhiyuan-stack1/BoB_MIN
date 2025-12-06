@@ -3,7 +3,7 @@ python3 diffusion/train.py \
     --name online_exp \
     --group my_online_tests \
     --buffer_size 50000 \
-    --online_rounds 10 \
+    --online_rounds 40 \
     --iterations_per_round 1000 \
     --batch_size 256 \
     --lr 5e-6 \

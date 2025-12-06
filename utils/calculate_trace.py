@@ -42,7 +42,6 @@
 # 提取log文件名中的bandwidth_estimation策略，比如上面这个例子，bandwidth_estimation就是bob1
 
 # 解析input_path，可以参考plot_trace_tc.py脚本
-
 import os
 import json
 import numpy as np
@@ -52,7 +51,6 @@ import pandas as pd
 
 TC_PROFILE_DIR = '/home/min414/data2/BoB_MIN/tc_profiles'
 
-# ... (parse_unit, parse_tc_profile, get_tc_params_over_time, get_tc_profile_and_strategy 函数保持不变) ...
 def parse_unit(value_str):
     value_str = str(value_str).lower().strip()
     if 'kbit' in value_str:
@@ -173,7 +171,25 @@ def process_one_trace(folder_path, use_tqdm=False):
     receiving_rates_mbps = np.array(receiving_rates) / 1e6
     tc_rates_mbps = np.array(tc_rates) / 1e6
     
-    mse = np.mean((receiving_rates_mbps - tc_rates_mbps) ** 2)
+    # --- 新增：计算 Accuracy 和 Overestimation ---
+    # 过滤掉 tc_rate <= 0 的点，防止除以零
+    valid_indices = (tc_rates_mbps > 1e-6)
+    
+    if np.any(valid_indices):
+        valid_rec = receiving_rates_mbps[valid_indices]
+        valid_tc = tc_rates_mbps[valid_indices]
+        
+        mse = np.mean((valid_rec - valid_tc) ** 2)
+        # Accuracy: max(0, 1 - |pred - true| / true)
+        accuracy = np.mean(np.maximum(0, 1 - np.abs(valid_rec - valid_tc) / valid_tc))
+        # Overestimation: max(0, (pred - true) / true)
+        overestimation = np.mean(np.maximum(0, (valid_rec - valid_tc) / valid_tc))
+    else:
+        mse = 0.0
+        accuracy = 0.0
+        overestimation = 0.0
+    # -------------------------------------------
+
     avg_loss = np.mean(packet_loss_ratios)
     avg_delay = np.mean(delay_avg_min_diffs)
     avg_tc_loss = np.mean(tc_losses)
@@ -184,6 +200,8 @@ def process_one_trace(folder_path, use_tqdm=False):
         'strategy': strategy,
         'tc_profile': tc_profile_name,
         'mse': mse,
+        'accuracy': accuracy,          # 新增
+        'overestimation': overestimation, # 新增
         'avg_loss': avg_loss,
         'avg_delay': avg_delay,
         'avg_tc_loss': avg_tc_loss,
@@ -234,7 +252,6 @@ def calculate_metrics_for_collection(collection_path):
     return final_metrics
 
 def main(input_path, report_file):
-    # ... (main 函数保持不变，它用于独立的报告生成) ...
     results = defaultdict(list)
     folders = [f for f in sorted(os.listdir(input_path)) if os.path.isdir(os.path.join(input_path, f))]
     with tqdm(total=len(folders), desc=f"Traces in {input_path}") as pbar:
@@ -249,7 +266,8 @@ def main(input_path, report_file):
             
     with open(report_file, 'a') as fout:
         fout.write(f"\n==== Results for {input_path} ====\n")
-        fout.write("strategy,tc_profile,mse,avg_loss,avg_delay,avg_tc_loss,avg_tc_delay,avg_receiving_rate\n")
+        # 更新表头，加入 accuracy 和 overestimation
+        fout.write("strategy,tc_profile,mse,accuracy,overestimation,avg_loss,avg_delay,avg_tc_loss,avg_tc_delay,avg_receiving_rate\n")
         for key, group in results.items():
             strategy, tc_profile = key
             df = pd.DataFrame(group)
@@ -257,9 +275,11 @@ def main(input_path, report_file):
             fout.write(f"{strategy},{tc_profile}," + ",".join([f"{v:.6f}" for v in mean_values.values]) + "\n")
 
 if __name__ == '__main__':
-    # ... (主程序入口保持不变) ...
-    basedir = '/home/min414/data2/extra_storage'
-    ids = ['0','1','2','3','4','5',]
+    # basedir = '/home/min414/data2/extra_storage'
+    basedir = 'results'
+    # ids = ['0','1','2','3','4','5',]
+    ids = ['251125000901_online_exp_online_6090_round_5',]
+    # ids = ['0']
     report_file = 'report.txt'
     with open(report_file, 'w') as fout:
         fout.write('')
