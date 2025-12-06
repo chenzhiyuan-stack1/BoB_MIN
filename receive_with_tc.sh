@@ -91,7 +91,7 @@ runTestsOnModel() {
   fi
 
   # 远程登录并启动发送端，传递所有参数（多加一个 resultsDir）
-  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && bash send_tc.sh ${modelName} \"$video_path\" $height $width $fps \"$audio_path\""
+  ssh -p 2223 knw@202.120.36.33 "cd BoB_MIN && bash send_tc.sh ${modelName} \"$video_path\" $height $width $fps \"$audio_path\""
 
   # 等待连接建立，最多等待30秒
   for k in {1..30}; do
@@ -109,8 +109,8 @@ runTestsOnModel() {
     docker stop alphartc_receiver >/dev/null 2>&1
     docker rm alphartc_receiver >/dev/null 2>&1
     # 远程停止发送端容器
-    ssh -p 2223 knw@202.120.36.216 "docker stop alphartc_sender >/dev/null 2>&1"
-    ssh -p 2223 knw@202.120.36.216 "docker rm alphartc_sender >/dev/null 2>&1"
+    ssh -p 2223 knw@202.120.36.33 "docker stop alphartc_sender >/dev/null 2>&1"
+    ssh -p 2223 knw@202.120.36.33 "docker rm alphartc_sender >/dev/null 2>&1"
     return
   fi
 
@@ -119,7 +119,7 @@ runTestsOnModel() {
   tc_profile=${tc_profiles[$((RANDOM % ${#tc_profiles[@]}))]}
   echo "选用链路 profile: $tc_profile"
   # 在send端执行tc命令，限制发往receive端8000端口的带宽、延迟和丢包率
-  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && docker exec -w /app/tc_profiles alphartc_sender bash ./tc_policy_min.sh $tc_profile"
+  ssh -p 2223 knw@202.120.36.33 "cd BoB_MIN && docker exec -w /app/tc_profiles alphartc_sender bash ./tc_policy_min.sh $tc_profile"
 
   # 等待连接结束
   while true; do
@@ -127,7 +127,7 @@ runTestsOnModel() {
       end_time=$(date +%s)
       echo "连接已结束"
       # 清理 tc
-      ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && sudo tc_profiles/tc_clear_min.sh"
+      ssh -p 2223 knw@202.120.36.33 "cd BoB_MIN && sudo tc_profiles/tc_clear_min.sh"
 
       # 停止并删除容器
       if docker ps | grep -q alphartc_receiver; then
@@ -139,8 +139,8 @@ runTestsOnModel() {
         docker rm alphartc_receiver >/dev/null 2>&1
       fi
       # 远程停止发送端容器
-      ssh -p 2223 knw@202.120.36.216 "docker stop alphartc_sender >/dev/null 2>&1"
-      ssh -p 2223 knw@202.120.36.216 "docker rm alphartc_sender >/dev/null 2>&1"
+      ssh -p 2223 knw@202.120.36.33 "docker stop alphartc_sender >/dev/null 2>&1"
+      ssh -p 2223 knw@202.120.36.33 "docker rm alphartc_sender >/dev/null 2>&1"
       # 计算连接持续时间
       duration=$((end_time - start_time))
       echo "连接持续了 ${duration} 秒"
@@ -154,7 +154,7 @@ runTestsOnModel() {
   # mv outaudio.wav ${resultsDir}/outaudio_${modelName}_${video}_${audio}_${tc_profile}.wav
   mv webrtc.log ${resultsDir}/webrtc_receive_${modelName}_${video}_${audio}_${tc_profile}.log
   # 远程收集发送端日志
-  ssh -p 2223 knw@202.120.36.216 "cd BoB_MIN && rm -rf ${resultsDir} && mkdir -p ${resultsDir} && mv webrtc.log ${resultsDir}/webrtc_send_${modelName}_${video}_${audio}_${tc_profile}.log"
+  ssh -p 2223 knw@202.120.36.33 "cd BoB_MIN && rm -rf ${resultsDir} && mkdir -p ${resultsDir} && mv webrtc.log ${resultsDir}/webrtc_send_${modelName}_${video}_${audio}_${tc_profile}.log"
 }
 
 test_model_list=(
