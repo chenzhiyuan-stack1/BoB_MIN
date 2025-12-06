@@ -31,12 +31,15 @@ tc_profiles=(
   # test2
   # 4G
   # bad
-  bad4G
-  satellite
-  WIFI
-  low
-  low1
+  # bad4G
+  # satellite
+  # WIFI
+  # low
+  # low1
   # medium
+  FINAL1
+  FINAL2
+  FINAL3
 )
 
 # 随机选video和audio，并远程启动发送端
@@ -155,8 +158,8 @@ runTestsOnModel() {
 }
 
 test_model_list=(
-  # bob1
-  # heuristic2
+  bob1
+  heuristic2
   MDQL
 )
 
