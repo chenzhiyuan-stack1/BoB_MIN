@@ -27,10 +27,13 @@ class Diffusion(nn.Module):
         self.action_dim = action_dim
         self.max_action = max_action
         self.model = model
-        self.old_model = copy.deepcopy(model)
-        self.old_model.eval()
-        for p in self.old_model.parameters():
+        # old_model 作为影子模型，但不注册到 Module，避免保存/加载冲突
+        _shadow = copy.deepcopy(model)
+        _shadow.eval()
+        _shadow.to(next(model.parameters()).device)
+        for p in _shadow.parameters():
             p.requires_grad_(False)
+        object.__setattr__(self, 'old_model', _shadow)
         
         if beta_schedule == 'linear':
             betas = linear_beta_schedule(n_timesteps)
@@ -247,5 +250,16 @@ class Diffusion(nn.Module):
 
         return loss_per_sample.mean()
 
+    def refresh_old_model(self):
+        """与当前策略权重同步旧策略，保持不训练、不过载到 state_dict。"""
+        shadow = copy.deepcopy(self.model).eval()
+        # 设备与 dtype 同步
+        p = next(self.model.parameters(), None)
+        device = p.device if p is not None else self.betas.device
+        shadow.to(device)
+        for q in shadow.parameters():
+            q.requires_grad_(False)
+        object.__setattr__(self, 'old_model', shadow)
+    
     def forward(self, state, *args, **kwargs):
         return self.sample(state, *args, **kwargs)

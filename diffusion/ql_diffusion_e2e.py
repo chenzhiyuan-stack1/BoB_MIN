@@ -358,11 +358,26 @@ class Diffusion_QL(object):
 
     def load_model(self, dir, id=None):
         if id is not None:
-            self.actor.load_state_dict(torch.load(f'{dir}/actor_{id}.pth'))
-            self.critic.load_state_dict(torch.load(f'{dir}/critic_{id}.pth'))
-            self.v_critic.load_state_dict(torch.load(f'{dir}/v_critic_{id}.pth'))
+            actor_sd = torch.load(f'{dir}/actor_{id}.pth', map_location=self.device)
+            critic_sd = torch.load(f'{dir}/critic_{id}.pth', map_location=self.device)
+            v_critic_sd = torch.load(f'{dir}/v_critic_{id}.pth', map_location=self.device)
         else:
-            self.actor.load_state_dict(torch.load(f'{dir}/actor.pth'))
-            self.critic.load_state_dict(torch.load(f'{dir}/critic.pth'))
-            self.v_critic.load_state_dict(torch.load(f'{dir}/v_critic.pth'))
+            actor_sd = torch.load(f'{dir}/actor.pth', map_location=self.device)
+            critic_sd = torch.load(f'{dir}/critic.pth', map_location=self.device)
+            v_critic_sd = torch.load(f'{dir}/v_critic.pth', map_location=self.device)
+
+        # 允许缺失键（比如 old_model 不在 ckpt）
+        self.actor.load_state_dict(actor_sd, strict=False)
+        self.critic.load_state_dict(critic_sd, strict=False)
+        self.v_critic.load_state_dict(v_critic_sd, strict=False)
+
+        # 同步 target 与影子模型
         self.critic_target = copy.deepcopy(self.critic)
+        self.v_critic_target = copy.deepcopy(self.v_critic)
+
+        # 同步 EMA 模型（若继续使用 EMA）
+        self.ema_model = copy.deepcopy(self.actor)
+
+        # 同步 old_model 影子，不注册到 Module
+        if hasattr(self.actor, 'refresh_old_model'):
+            self.actor.refresh_old_model()
