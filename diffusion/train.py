@@ -395,7 +395,7 @@ if __name__ == "__main__":
     parser.add_argument('--results_basedir', type=str, default="results", help="Base directory for raw log data")
     parser.add_argument('--online_model_path', type=str, default="model", help="Base directory for online model checkpoints")
     parser.add_argument('--offline_name', type=str, default="251105234045_offline_exp_offline_400a", help="Offline experiment name for initializing online training")
-    parser.add_argument('--offline_dataset', type=str, nargs='+', default=["BoB_67.pickle"], help="Paths to offline dataset files for online training")
+    parser.add_argument('--offline_dataset', type=str, nargs='+', default=["/home/min414/data2/extra_storage/BoB_67.pickle"], help="Paths to offline dataset files for online training")
 
     # --- Agent & RL Parameters ---
     parser.add_argument('--batch_size', type=int, default=2048)
