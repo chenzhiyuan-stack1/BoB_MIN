@@ -360,7 +360,7 @@ def main(args: argparse.Namespace):
         offline_replay_buffer = ReplayBuffer(   
             state_dim=STATE_DIM,
             action_dim=ACTION_DIM,
-            buffer_size=args.buffer_size,
+            buffer_size=args.offline_dataset_buffer_size,
         )
         run_online_training(args, agent, replay_buffer, offline_replay_buffer)
     else:
@@ -396,7 +396,8 @@ if __name__ == "__main__":
     parser.add_argument('--online_model_path', type=str, default="model", help="Base directory for online model checkpoints")
     parser.add_argument('--offline_name', type=str, default="251105234045_offline_exp_offline_400a", help="Offline experiment name for initializing online training")
     parser.add_argument('--offline_dataset', type=str, nargs='+', default=["/home/min414/data2/extra_storage/BoB_67.pickle"], help="Paths to offline dataset files for online training")
-
+    parser.add_argument('--offline_dataset_buffer_size', type=int, default=800_000)
+    
     # --- Agent & RL Parameters ---
     parser.add_argument('--batch_size', type=int, default=2048)
     parser.add_argument('--buffer_size', type=int, default=3_000_000)
