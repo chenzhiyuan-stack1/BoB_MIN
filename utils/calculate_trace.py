@@ -278,7 +278,8 @@ if __name__ == '__main__':
     # basedir = '/home/min414/data2/extra_storage'
     basedir = 'results'
     # ids = ['0','1','2','3','4','5',]
-    ids = ['251125000901_online_exp_online_6090_round_5',]
+    # ids = ['251125000901_online_exp_online_6090_round_5',]
+    ids = ['10']
     # ids = ['0']
     report_file = 'report.txt'
     with open(report_file, 'w') as fout:

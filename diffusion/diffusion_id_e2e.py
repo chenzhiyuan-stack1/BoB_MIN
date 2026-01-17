@@ -27,7 +27,11 @@ class Diffusion(nn.Module):
         self.action_dim = action_dim
         self.max_action = max_action
         self.model = model
-
+        self.old_model = copy.deepcopy(model)
+        self.old_model.eval()
+        for p in self.old_model.parameters():
+            p.requires_grad_(False)
+        
         if beta_schedule == 'linear':
             betas = linear_beta_schedule(n_timesteps)
         elif beta_schedule == 'cosine':
@@ -185,6 +189,63 @@ class Diffusion(nn.Module):
         weights = beta_t / 2. / alpha_t / (1.01 - alpha_cumprod_t_1) * exp_weight
         loss = self.p_losses(x, state, t, weights)
         return loss
+    
+    def _p_mean_variance_with_model(self, x, t, s, policy_model):
+        """
+        复用 p_mean_variance，但可指定使用的 policy_model（当前或旧策略）。
+        """
+        # model(x/1e6) 与原逻辑一致
+        x_recon = self.predict_start_from_noise(
+            x, t=t, noise=(policy_model(x / 1e6, t, s) * 1e6)
+        )
+
+        if self.clip_denoised:
+            x_recon = x_recon.clamp(-self.max_action * 1e6, self.max_action * 1e6)
+
+        model_mean = (
+            extract(self.posterior_mean_coef1, t, x.shape) * x_recon +
+            extract(self.posterior_mean_coef2, t, x.shape) * x
+        )
+        posterior_variance = extract(self.posterior_variance, t, x.shape)
+        posterior_log_variance_clipped = extract(self.posterior_log_variance_clipped, t, x.shape)
+        return model_mean, posterior_variance, posterior_log_variance_clipped
+
+    def _log_prob_last_step(self, policy_model, x, state):
+        """
+        用 diffusion 最后一步（t=0）的高斯分布对给定 action x 计算 log_prob。
+        """
+        b = x.shape[0]
+        t = torch.zeros(b, device=x.device, dtype=torch.long)
+        model_mean, _, model_log_variance = self._p_mean_variance_with_model(x, t, state, policy_model)
+        std = (0.5 * model_log_variance).exp()  # std = exp(log_var/2)
+        # 高斯对角协方差，沿动作维度求和
+        log_prob = (-0.5 * (((x - model_mean) / std)**2 + 2 * torch.log(std) + np.log(2 * np.pi))).sum(dim=-1)
+        return log_prob
+
+    def ppo_loss(self, x, state, adv, weights=1.0, clip_ratio=0.2):
+        """
+        x: 动作（policy 输出或采样得到的 action）
+        state: 状态
+        adv: 优势
+        weights: 额外样本权重
+        clip_ratio: PPO epsilon
+        """
+        # 当前策略 log_prob（需要梯度）
+        logp_new = self._log_prob_last_step(self.model, x, state)
+        # 旧策略 log_prob（无梯度）
+        with torch.no_grad():
+            logp_old = self._log_prob_last_step(self.old_model, x, state)
+
+        ratio = torch.exp(logp_new - logp_old)
+        # PPO clip
+        unclipped = ratio * adv
+        clipped = torch.clamp(ratio, 1.0 - clip_ratio, 1.0 + clip_ratio) * adv
+        loss_per_sample = -torch.min(unclipped, clipped)
+
+        if isinstance(weights, torch.Tensor):
+            loss_per_sample = loss_per_sample * weights
+
+        return loss_per_sample.mean()
 
     def forward(self, state, *args, **kwargs):
         return self.sample(state, *args, **kwargs)

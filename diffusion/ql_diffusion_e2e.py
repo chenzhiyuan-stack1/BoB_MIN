@@ -168,7 +168,8 @@ class Diffusion_QL(object):
                 # adv = self.critic.q_min(state, action) - self.v_critic(state)
                 q_values = self.critic.q_min(state, action)
                 adv = (q_values - q_values.mean()) / (q_values.std() + 1e-8)
-            bc_loss = self.actor.loss(action, state, adv)
+            # bc_loss = self.actor.loss(action, state, adv)
+            bc_loss = self.actor.ppo_loss(action, state, adv)
             actor_loss = bc_loss
 
             self.actor_optimizer.zero_grad()
