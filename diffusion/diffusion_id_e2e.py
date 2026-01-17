@@ -193,6 +193,11 @@ class Diffusion(nn.Module):
         loss = self.p_losses(x, state, t, weights)
         return loss
     
+    def loss_constraint(self, x, state, weights=1.0):
+        batch_size = len(x)
+        t = torch.randint(0, self.n_timesteps, (batch_size,), device=x.device).long()
+        return self.p_losses(x, state, t, weights)
+    
     def _p_mean_variance_with_model(self, x, t, s, policy_model):
         """
         复用 p_mean_variance，但可指定使用的 policy_model（当前或旧策略）。

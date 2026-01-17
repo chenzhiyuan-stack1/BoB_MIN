@@ -208,6 +208,100 @@ class Diffusion_QL(object):
             self.actor_lr_scheduler.step()
 
         return metric
+    
+    def train_online(self, replay_buffer, offline_replay_buffer, iterations, batch_size=100):
+        metric = {
+            'bc_loss': [], 'ql_loss': [], 'actor_loss': [], 'v_loss': [],
+            'target_q': [], 'next_v': [], 'v': [], 'q1': [], 'q2': [],
+            'adv_mean': [], 'adv_std': []
+        }
+        for _ in range(iterations):
+            # Sample replay buffer / batch
+            # action (Mbps)
+            state, action, reward, next_state, not_done = replay_buffer.sample(batch_size)
+            offline_state, offline_action, offline_reward, offline_next_state, offline_not_done = offline_replay_buffer.sample(batch_size)
+            
+            state = state.to(self.device)
+            action = action.to(self.device)
+            next_state = next_state.to(self.device)
+            reward = reward.to(self.device)
+            not_done = not_done.to(self.device)
+            
+            offline_state = offline_state.to(self.device)
+            offline_action = offline_action.to(self.device)
+            
+            """ Update Critic """
+            with torch.no_grad():
+                # target_q = self.critic_target.q_min(state, action)  # next action from target actor
+                target_q = self.critic.q_min(state, action)
+            v = self.v_critic(state)
+            adv = target_q - v
+            v_loss = asymmetric_l2_loss(adv, 0.7)
+            self.v_critic_optimizer.zero_grad(set_to_none=True)
+            v_loss.backward()
+            self.v_critic_optimizer.step()
+            
+            """Update Critic Q functions"""
+            with torch.no_grad():
+                # [改动2] Q函数的更新目标依赖于稳定的V目标网络
+                # 这是抑制价值爆炸的关键锚点
+                next_v = self.v_critic_target(next_state)
+                targets = reward + self.discount * next_v
+            targets = torch.clamp(targets, -200.0, 200.0)
+            q1, q2 = self.critic(state, action)
+            critic_loss = F.mse_loss(q1, targets) + F.mse_loss(q2, targets)
+            self.critic_optimizer.zero_grad(set_to_none=True)
+            critic_loss.backward()
+            if self.grad_norm > 0:
+                critic_grad_norms = nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.grad_norm, norm_type=2)
+            self.critic_optimizer.step()
+
+            """ Policy Training """
+            online_action = self.actor.sample(state) # bps
+            q_values = self.critic.q_min(state, online_action / 1e6)
+            with torch.no_grad():
+                v_target = self.v_critic(state)
+            adv = q_values - v_target
+            bc_loss = self.actor.loss_constraint(offline_action, offline_state)
+            
+            actor_loss = -adv + bc_loss
+
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            if self.grad_norm > 0: 
+                actor_grad_norms = nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.grad_norm, norm_type=2)
+            self.actor_optimizer.step()
+
+            """ Step Target network """
+            if self.step % self.update_ema_every == 0:
+                self.step_ema()
+            
+            # Update critic target network
+            for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
+                target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
+
+            for param, target_param in zip(self.v_critic.parameters(), self.v_critic_target.parameters()):
+                target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
+            
+            self.step += 1
+            
+            """ Log """
+            metric['ql_loss'].append(critic_loss.item())
+            metric['v_loss'].append(v_loss.item())
+            metric['actor_loss'].append(actor_loss.item())
+            metric['bc_loss'].append(bc_loss.item())
+            metric['target_q'].append(target_q.mean().item())
+            metric['next_v'].append(next_v.mean().item())
+            metric['v'].append(v.mean().item())
+            metric['q1'].append(q1.mean().item())
+            metric['q2'].append(q2.mean().item())
+            metric['adv_mean'].append(adv.mean().item())
+            metric['adv_std'].append(adv.std().item())
+
+        if self.lr_decay: 
+            self.actor_lr_scheduler.step()
+
+        return metric
 
     def train_debug(self, replay_buffer, iterations, batch_size=100):
         metric = {

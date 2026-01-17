@@ -148,7 +148,7 @@ def run_offline_training(args: argparse.Namespace, agent: Agent, replay_buffer: 
     # Final model save
     agent.save_model(args.exp_run_path, "final_offline")
 
-def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: ReplayBuffer):
+def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: ReplayBuffer, offline_replay_buffer: ReplayBuffer):
     """Online training loop: collect -> process -> train."""
     diffusion_utils.print_banner("Starting ONLINE Training", separator="=", num_star=90)
 
@@ -159,6 +159,19 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
     # args.exp_run_path = os.path.join(args.exp_output_dir, args.name)
     offline_path = os.path.join(args.exp_output_dir, args.offline_name)
     agent.load_model(offline_path, "final_offline")
+    
+    # Load initial dataset(s)
+    for idx, path in enumerate(args.offline_dataset):
+        print(f"Loading dataset from: {path}")
+        with open(path, 'rb') as f:
+            dataset = pickle.load(f)
+        dataset = adjust_dataset(dataset)
+        if idx == 0:
+            offline_replay_buffer.load_dataset(dataset)
+        else:
+            offline_replay_buffer.add_transitions(dataset)
+        del dataset
+    print(f"Offline replay buffer size: {offline_replay_buffer._size}")
     
     for i in range(args.online_rounds):
         diffusion_utils.print_banner(f"Online Round {i + 1} / {args.online_rounds}", separator="=", num_star=90)
@@ -263,8 +276,14 @@ def run_online_training(args: argparse.Namespace, agent: Agent, replay_buffer: R
 
         # --- Step 4: Training ---
         print(f"Training for {args.iterations_per_round} iterations...")
-        loss_metric = agent.train(
+        # loss_metric = agent.train(
+        #     replay_buffer,
+        #     iterations=args.iterations_per_round,
+        #     batch_size=args.batch_size,
+        # )
+        loss_metric = agent.train_online(
             replay_buffer,
+            offline_replay_buffer,
             iterations=args.iterations_per_round,
             batch_size=args.batch_size,
         )
@@ -338,7 +357,12 @@ def main(args: argparse.Namespace):
     if args.mode == 'offline':
         run_offline_training(args, agent, replay_buffer)
     elif args.mode == 'online':
-        run_online_training(args, agent, replay_buffer)
+        offline_replay_buffer = ReplayBuffer(   
+            state_dim=STATE_DIM,
+            action_dim=ACTION_DIM,
+            buffer_size=args.buffer_size,
+        )
+        run_online_training(args, agent, replay_buffer, offline_replay_buffer)
     else:
         raise ValueError(f"Unknown mode: {args.mode}")
 
@@ -371,6 +395,7 @@ if __name__ == "__main__":
     parser.add_argument('--results_basedir', type=str, default="results", help="Base directory for raw log data")
     parser.add_argument('--online_model_path', type=str, default="model", help="Base directory for online model checkpoints")
     parser.add_argument('--offline_name', type=str, default="251105234045_offline_exp_offline_400a", help="Offline experiment name for initializing online training")
+    parser.add_argument('--offline_dataset', type=str, nargs='+', default=["BoB_67.pickle"], help="Paths to offline dataset files for online training")
 
     # --- Agent & RL Parameters ---
     parser.add_argument('--batch_size', type=int, default=2048)
