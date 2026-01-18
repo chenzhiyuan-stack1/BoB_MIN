@@ -264,7 +264,7 @@ class Diffusion_QL(object):
             adv = q_values - v_target
             bc_loss = self.actor.loss_constraint(offline_action, offline_state)
             
-            actor_loss = -adv + bc_loss
+            actor_loss = (-adv).mean() + bc_loss
 
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
